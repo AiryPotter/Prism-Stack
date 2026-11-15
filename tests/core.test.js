@@ -615,11 +615,14 @@ test('dig: gem events report how many are left', () => {
   assert.notStrictEqual(g.outcome, 'win');
 });
 
-test('stages: 20 stages, three kinds, speed rises, deterministic layouts', () => {
-  assert.strictEqual(C.STAGES.length, 20);
+test('stages: 30 stages, three kinds, speed rises, deterministic layouts', () => {
+  assert.strictEqual(C.STAGES.length, 30);
   const kinds = new Set(C.STAGES.map(s => s.type));
   eq([...kinds].sort(), ['dig', 'lines', 'timed']);
-  for (let i = 1; i < 20; i++) assert(C.STAGES[i].speed >= C.STAGES[i - 1].speed);
+  for (let i = 1; i < C.STAGES.length; i++) assert(C.STAGES[i].speed >= C.STAGES[i - 1].speed);
+  assert.strictEqual(C.STAGES[29].speed, 8);
+  // Dig piles always leave room to play above them.
+  for (const st of C.STAGES) if (st.type === 'dig') assert(st.rules.garbage.length <= 14, 'stage ' + st.n);
   const a = C.createGame({ mode: 'stage', stage: 10 }), b = C.createGame({ mode: 'stage', stage: 10 });
   eq(a.board, b.board); eq(a.queue, b.queue);
   for (const st of C.STAGES) {
@@ -699,6 +702,9 @@ test('bot: every stage can be won', () => {
     let g = playBot(C.createGame({ mode: 'stage', stage: st.n }));
     if (g.outcome !== 'win') g = playDigBot(C.createGame({ mode: 'stage', stage: st.n }));
     assert.strictEqual(g.outcome, 'win', `stage ${st.n} (${st.type}) not won: ${g.gameOverReason}`);
+    // Timed stages must be realistic for a person: the bot's piece count at a
+    // relaxed 1.2 s per piece still fits inside the time limit.
+    if (st.type === 'timed') assert(g.piecesPlaced * 1200 < st.rules.timeLimitMs, `stage ${st.n} too tight: ${g.piecesPlaced} pieces`);
     const v = st.metric === 'pieces' ? g.piecesPlaced : g.piecesPlaced;
     rows.push(`${st.n}:${st.type[0]} ${v}p` + (st.metric === 'pieces' ? `/par ${st.par3}` : ''));
   }
@@ -716,6 +722,20 @@ test('bot: Sprint, Ultra, Daily and Zen all run to a proper end', () => {
     if (g.state !== 'over') { g.elapsedMs = g.rules.timeLimitMs - 100; tickFor(g, 200, 50); }
     assert.strictEqual(g.outcome, 'finish', mode);
   }
+});
+
+test('end-of-game stats: clears are counted by size', () => {
+  const g = newGame(); clearBoard(g);
+  g.board[JUNK[1]][JUNK[0]] = 'X';
+  for (const n of [1, 2, 4, 1]) {
+    for (let i = 0; i < n; i++) fillRow(g, BOTTOM - i, [0]);
+    place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+    tickFor(g, CONFIG.LINE_CLEAR_DELAY_MS + 5);
+    for (let y = 0; y < TOTAL_ROWS; y++) g.board[y][0] = null;
+  }
+  eq(g.stats.clears, [0, 2, 1, 0, 1]);
+  assert.strictEqual(g.stats.quads, 1);
+  assert.strictEqual(g.stats.maxCombo, 3);
 });
 
 console.log('\nPhase 2 — modern scoring');

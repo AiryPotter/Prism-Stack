@@ -14,8 +14,8 @@ Or download the repo and double-click `index.html`.
 
 | Game | File | Best on | Highlights |
 |---|---|---|---|
-| **Prism Stack** | [`index.html`](index.html) | PC / keyboard | Marathon (Easy / Normal / Hard), 20-stage campaign with star ratings, Sprint, Ultra, Daily Challenge, Zen practice (speed slider), sound and music, settings, key remapping, top-10 scores |
-| **Stackfall** | [`stackfall/index.html`](stackfall/index.html) | Android / touch | **All the same modes as Prism Stack** (Marathon Easy/Normal/Hard, 20 Stages, Sprint, Ultra, Daily) plus **Zen practice** with a fall-speed slider from frozen to instant, swipe and tap controls, level sounds, vibration, full-screen, screen wake-lock |
+| **Prism Stack** | [`index.html`](index.html) | PC / keyboard | Marathon (Easy / Normal / Hard), 30-stage campaign with star ratings, Sprint, Ultra, Daily Challenge, Zen practice (speed slider), sound and music, settings, key remapping, top-10 scores |
+| **Stackfall** | [`stackfall/index.html`](stackfall/index.html) | Android / touch | **All the same modes as Prism Stack** (Marathon Easy/Normal/Hard, 30 Stages, Sprint, Ultra, Daily) plus **Zen practice** with a fall-speed slider from frozen to instant, swipe and tap controls, level sounds, vibration, full-screen, screen wake-lock |
 
 These are two separate apps with their own look, controls and screens. They share one rules engine: Stackfall contains an exact copy of Prism Stack's `game-core` script, so every mode plays by identical rules (the Daily Challenge is even the same puzzle on both). The tests fail if the two copies ever drift apart. To change the rules, edit `index.html` first, then run `node tools/sync-engine.js` to copy the engine into Stackfall.
 
@@ -25,10 +25,12 @@ These are two separate apps with their own look, controls and screens. They shar
 - Tunable DAS (170 ms) and ARR (50 ms), soft drop and hard drop, 500 ms lock delay with 15 resets
 - Guideline gravity curve, level up every 10 lines
 - **Modern scoring:** T-spins (full and mini, 3-corner rule), back-to-back ×1.5, combos and perfect clears, with on-screen callouts like "T-SPIN DOUBLE!", "BACK-TO-BACK" and "COMBO ×3"
-- **Modes:** Marathon (3 difficulties), **Stages** (20 levels: Lines, Timed and Dig goals, 1–3 stars), **Sprint** (40 lines), **Ultra** (2-minute score attack), **Daily Challenge** (same puzzle for everyone each day, fully offline) and **Zen practice** (no game over, with a fall-speed slider from frozen to instant that you can change mid-game)
+- **Modes:** Marathon (3 difficulties), **Stages** (30 levels: Lines, Timed and Dig goals, 1–3 stars), **Sprint** (40 lines), **Ultra** (2-minute score attack), **Daily Challenge** (same puzzle for everyone each day, fully offline) and **Zen practice** (no game over, with a fall-speed slider from frozen to instant that you can change mid-game)
 - **Sound:** synthesized sound effects for every move, clear and T-spin, plus an optional original music loop (off by default). No audio files; nothing downloads.
 - **Settings:** DAS, ARR, soft-drop speed, Marathon start level (1–15), next pieces shown (1–5), ghost piece, sound and music volume, and **key remapping**
 - **Top scores:** a top 10 for each Marathon difficulty, Sprint, Ultra and the Daily Challenge, with dates
+- **Animations:** pieces flash as they lock, hard drops leave a streak, cleared lines sweep away in coloured shards, the board glows on level-up and greys out at game over. **Calm mode** (in Settings, and automatic if your system asks for reduced motion) tones it all down.
+- **End-of-game stats:** pieces per second, singles / doubles / triples / Quads, T-spins, best combo, back-to-backs and perfect clears
 
 ### Controls (keyboard)
 | Key | Action |
@@ -62,7 +64,7 @@ No build step and no dependencies. Edit the HTML file and refresh the browser.
 ```bash
 node tests/core.test.js
 ```
-They cover rotation and kicks, the bag, lock delay, gravity, every row of the scoring table (including T-spins, back-to-back, combos and perfect clears), random fuzz games, and a bot that proves all 20 stages are winnable.
+They cover rotation and kicks, the bag, lock delay, gravity, every row of the scoring table (including T-spins, back-to-back, combos and perfect clears), random fuzz games, and a bot that proves all 30 stages are winnable.
 
 The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/design-spec.md).
 
@@ -73,7 +75,7 @@ The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/desi
 - [x] Phone play: Stackfall has every Prism Stack mode with touch controls
 - [ ] Phase 3: touch controls inside Prism Stack itself (on hold)
 - [x] Phase 4: sound and music, settings, key remapping, top-10 scores, Zen practice speed
-- [ ] Phase 5: animations and polish
+- [x] Phase 5: animations (lock flash, hard-drop streaks, line-clear sweep and shards, level-up glow, game-over sweep), calm mode, more end-of-game stats, Stages 21–30
 - [ ] Phase 6: final hardening and privacy audit
 
 ## Contributing

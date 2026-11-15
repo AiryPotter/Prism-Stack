@@ -2,7 +2,7 @@
 <!--
   Prism Stack — free, open-source (MIT), offline falling-block puzzle game
   https://github.com/AiryPotter/Prism-Stack
-  Build: Phase 0–2 + 4 + Modes update (scoring; sound, settings, key remapping, top-10, Zen practice speed)
+  Build: Phases 0–2, 4, 5 + Modes (scoring, sound, settings, top-10, Zen practice, animations, 30 stages)
   Privacy: makes no network requests. The CSP below blocks all external loading.
 -->
 <html lang="en">
@@ -149,6 +149,18 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 #fx { position: absolute; left: 3px; top: 3px; pointer-events: none; z-index: 7; }
 #boardWrap.bump { animation: bump 0.14s ease-out; }
 @keyframes bump { 0% { transform: translateY(0); } 40% { transform: translateY(3px); } 100% { transform: translateY(0); } }
+/* Level up: the board frame glows (Phase 5) */
+#boardWrap.levelup { animation: levelglow 0.9s ease-out; }
+@keyframes levelglow {
+  0% { box-shadow: 0 0 0 rgba(255, 216, 74, 0), 0 20px 50px rgba(0, 0, 0, 0.5); }
+  25% { box-shadow: 0 0 46px rgba(255, 216, 74, 0.75), 0 0 0 2px rgba(255, 216, 74, 0.8), 0 20px 50px rgba(0, 0, 0, 0.5); }
+  100% { box-shadow: 0 0 40px rgba(139, 108, 255, 0.22), 0 20px 50px rgba(0, 0, 0, 0.5); }
+}
+/* Calm mode (setting, or the system's reduced-motion preference): no shaking,
+   glows or bouncing; popups simply fade. */
+body.calm #boardWrap.bump, body.calm #boardWrap.levelup, body.calm .stat.pulse b { animation: none; }
+body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
+@keyframes popfade { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Action popups ("QUAD!", "GEM!", "STAGE CLEAR!") */
 #popup {
@@ -479,7 +491,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
             <button class="btn primary wide" data-act="play" data-mode="marathon" data-primary>Play Marathon</button>
           </div>
           <div class="mode-grid">
-            <button class="mode-btn feature" data-act="stages"><b>Stages</b><small id="m-stages">20 stages to clear</small></button>
+            <button class="mode-btn feature" data-act="stages"><b>Stages</b><small id="m-stages">30 stages to clear</small></button>
             <button class="mode-btn" data-act="play" data-mode="sprint"><b>Sprint</b><small id="m-sprint">Clear 40 lines fast</small></button>
             <button class="mode-btn" data-act="play" data-mode="ultra"><b>Ultra</b><small id="m-ultra">2-minute score attack</small></button>
             <button class="mode-btn" data-act="play" data-mode="daily"><b>Daily Challenge</b><small id="m-daily">Today's puzzle</small></button>
@@ -548,7 +560,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     <div class="overlay" id="ov-stages">
       <div class="card">
         <h3>STAGES</h3>
-        <p class="tag" id="s-total">★ 0 / 60</p>
+        <p class="tag" id="s-total">★ 0 / 90</p>
         <div class="stage-grid" id="stageGrid"></div>
         <button class="btn" data-act="menu">Back</button>
       </div>
@@ -855,7 +867,8 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       this.piecesPlaced = 0;
       this.b2b = false;        // last line clear was "difficult"
       this.combo = -1;         // consecutive line-clearing locks, minus one
-      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0 };
+      // clears[n] = how many n-line clears (any kind, T-spins included).
+      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0, clears: [0, 0, 0, 0, 0] };
       this.elapsedMs = 0;
       this.zenWipes = 0;
 
@@ -1149,6 +1162,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       if (tspin) this.stats.tspins++;
       if (b2b) this.stats.b2bs++;
       if (n === 4) this.stats.quads++;
+      this.stats.clears[Math.min(n, 4)]++;
       if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
 
       this.lines += n;
@@ -1417,7 +1431,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     return out;
   }
 
-  // 20 stages mixing three goal types. Speed rises every 4 stages (levels 1–5).
+  // 30 stages mixing three goal types. Speed rises every 4 stages (levels 1–8).
   //   lines: clear N lines          (stars by time)
   //   timed: clear N lines in T sec (stars by time)
   //   dig:   collect every gem      (stars by pieces used)
@@ -1442,6 +1456,17 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     { type: 'dig',   rows: 11, gems: 5, messy: 0.55 },
     { type: 'timed', lines: 30, time: 170 },
     { type: 'dig',   rows: 12, gems: 6, messy: 0.6 },
+    // Stages 21–30 (Phase 5): longer goals, messier junk, faster speed.
+    { type: 'lines', lines: 30 },
+    { type: 'dig',   rows: 12, gems: 6, messy: 0.65 },
+    { type: 'timed', lines: 30, time: 160 },
+    { type: 'dig',   rows: 13, gems: 6, messy: 0.7 },
+    { type: 'lines', lines: 35 },
+    { type: 'dig',   rows: 13, gems: 7, messy: 0.75 },
+    { type: 'timed', lines: 35, time: 180 },
+    { type: 'dig',   rows: 14, gems: 7, messy: 0.8 },
+    { type: 'timed', lines: 40, time: 200 },
+    { type: 'dig',   rows: 14, gems: 8, messy: 0.85 },
   ];
   // Star targets. Tuned with the test bot, then loosened for humans.
   const STAR_TUNING = { msPerLine: 5000, timedFraction: 0.6, digPerRow: 2.5, digPerMessy: 1.6, digExtra: 2, twoStar: 1.5 };
@@ -1584,6 +1609,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     ghost: true, nextCount: CONFIG.NEXT_COUNT, startLevel: 1,
     sound: true, sfxVol: 70, music: false, musicVol: 45,
     zenSpeed: 36,
+    effects: !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
   };
   const PREF_RANGE = {
     das: [50, 300], arr: [0, 100], softDrop: [0, 40], nextCount: [1, 5], startLevel: [1, 15],
@@ -1652,6 +1678,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     return s;
   }
   const save = loadSave();
+  document.body.classList.toggle('calm', !save.prefs.effects);
   function persist() { Store.set(SAVE_KEY, save); }
 
   function todayKey() {
@@ -1929,6 +1956,55 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     g.stroke();
   }
 
+  // Short-lived board effects (Phase 5). Each: { kind, t0, dur, ... } in cell units.
+  const boardFx = [];
+  let endStart = 0;
+  function addFx(f) { if (save.prefs.effects) { f.t0 = performance.now(); boardFx.push(f); } }
+  function drawBoardFx(g, c, now) {
+    for (let i = boardFx.length - 1; i >= 0; i--) {
+      const f = boardFx[i], t = (now - f.t0) / f.dur;
+      if (t >= 1) { boardFx.splice(i, 1); continue; }
+      if (f.kind === 'lock') {               // the locked piece flashes white
+        g.fillStyle = 'rgba(255,255,255,' + (0.55 * (1 - t)).toFixed(3) + ')';
+        for (const [x, y] of f.cells) {
+          if (y < HIDDEN) continue;
+          roundRect(g, x * c + 1, (y - HIDDEN) * c + 1, c - 2, c - 2, c * 0.2);
+          g.fill();
+        }
+      } else if (f.kind === 'trail') {       // hard-drop streak above each column
+        for (const s of f.cols) {
+          const top = Math.max(HIDDEN, s.from), bottom = s.to;
+          if (bottom <= top) continue;
+          const y0 = (top - HIDDEN) * c, y1 = (bottom - HIDDEN) * c;
+          const grad = g.createLinearGradient(0, y0, 0, y1);
+          grad.addColorStop(0, rgba(COLORS[f.type], 0));
+          grad.addColorStop(1, rgba(COLORS[f.type], 0.45 * (1 - t)));
+          g.fillStyle = grad;
+          g.fillRect(s.x * c + c * 0.2, y0, c * 0.6, y1 - y0);
+        }
+      }
+    }
+  }
+  // Coloured shards burst out of cleared rows (drawn on the effects layer).
+  function shardBurst(rows) {
+    if (!save.prefs.effects) return;
+    const c = Math.round(cell * dpr), every = rows.length > 2 ? 2 : 1;
+    for (const y of rows) {
+      if (y < HIDDEN) continue;
+      for (let x = 0; x < COLS; x += every) {
+        const t = game.board[y][x];
+        if (!t) continue;
+        particles.push({
+          x: (x + 0.5) * c, y: (y - HIDDEN + 0.5) * c,
+          vx: (x - 4.5) * c * (0.6 + Math.random() * 0.6) + (Math.random() - 0.5) * c * 3,
+          vy: -(1.5 + Math.random() * 3) * c,
+          rot: Math.random() * 6, vr: (Math.random() - 0.5) * 16,
+          w: c * 0.32, h: c * 0.32, color: t === 'X' ? '#6b7088' : COLORS[t] || '#ffffff', life: 0.45 + Math.random() * 0.35,
+        });
+      }
+    }
+  }
+
   function renderBoard(now) {
     const g = boardCtx;
     const c = Math.round(cell * dpr);
@@ -1936,7 +2012,11 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     g.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
     drawGrid(g, c);
     if (!game) return;
-    const lost = game.state === 'over' && game.outcome === 'lose';
+    const over = game.state === 'over' && game.outcome === 'lose';
+    // Game over: the stack greys out from the bottom up (instantly in calm mode).
+    const greyRows = !over ? 0 : save.prefs.effects ? Math.ceil(Math.min(1, (now - endStart) / 550) * VROWS) : VROWS;
+    const isGrey = y => over && (TOTAL_ROWS - 1 - y) < greyRows;
+    const lost = over && greyRows >= VROWS;
 
     // Locked blocks (junk has no glow; gems twinkle)
     for (let y = HIDDEN; y < TOTAL_ROWS; y++) {
@@ -1945,7 +2025,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         const t = row[x];
         if (!t) continue;
         const px = x * c, py = (y - HIDDEN) * c;
-        if (lost) { drawBlock(g, 'X', px, py, c, false); continue; }
+        if (isGrey(y)) { drawBlock(g, 'X', px, py, c, false); continue; }
         if (t === 'G') {
           drawBlock(g, 'G', px, py, c, false);
           g.globalAlpha = 0.35 + 0.35 * Math.sin(now / 260 + x * 0.9 + y * 0.6);
@@ -1957,14 +2037,16 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       }
     }
 
-    // Line-clear flash
+    // Line clear: a white band sweeps out from the middle (calm: a plain flash).
     if (game.state === 'clearing') {
       const t = Math.min(1, game.clearTimer / CONFIG.LINE_CLEAR_DELAY_MS);
       g.fillStyle = `rgba(255,255,255,${(0.9 * (1 - t)).toFixed(3)})`;
+      const full = COLS * c, w = save.prefs.effects ? full * Math.min(1, 0.15 + t * 1.7) : full;
       for (const y of game.clearingRows) {
-        if (y >= HIDDEN) g.fillRect(0, (y - HIDDEN) * c, COLS * c, c);
+        if (y >= HIDDEN) g.fillRect((full - w) / 2, (y - HIDDEN) * c, w, c);
       }
     }
+    drawBoardFx(g, c, now);
 
     // Ghost and active piece
     const p = game.piece;
@@ -2239,6 +2321,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   const particles = [];
   let fxDirty = false;
   function confetti(count) {
+    if (!save.prefs.effects) count = Math.min(count, 12);   // calm mode: a light sprinkle
     const W = fxCanvas.width, H = fxCanvas.height;
     for (let i = 0; i < count; i++) {
       particles.push({
@@ -2280,15 +2363,26 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 
   function handleEvents() {
     const announceLevels = session && (session.mode === 'marathon' || session.mode === 'ultra' || session.mode === 'daily');
-    let locked = false, cleared = false;
+    let locked = false, cleared = false, dropRows = 0;
     for (const e of game.drainEvents()) {
+      if (e.type === 'harddrop') dropRows = e.rows;
+      if (e.type === 'lock') {
+        addFx({ kind: 'lock', dur: 180, cells: e.cells });
+        if (dropRows > 1) {
+          const cols = {};
+          for (const [x, y] of e.cells) if (!(x in cols) || y < cols[x]) cols[x] = y;
+          addFx({ kind: 'trail', dur: 220, type: e.piece,
+                  cols: Object.keys(cols).map(x => ({ x: +x, from: cols[x] - dropRows, to: cols[x] })) });
+        }
+      }
       if (e.type === 'move') Sound.sfx('move');
       else if (e.type === 'rotate') Sound.sfx('rotate');
       else if (e.type === 'hold') Sound.sfx('hold');
       else if (e.type === 'lock') locked = true;
-      if (e.type === 'harddrop') { Sound.sfx('harddrop'); if (e.rows > 0) retrigger(boardWrap, 'bump'); }
+      if (e.type === 'harddrop') { Sound.sfx('harddrop'); if (e.rows > 0 && save.prefs.effects) retrigger(boardWrap, 'bump'); }
       else if (e.type === 'clear') {
         cleared = true;
+        shardBurst(e.rows);
         if (e.perfect) Sound.sfx('perfect');
         else if (e.tspin) Sound.sfx('tspin');
         else Sound.sfx('clear', e.lines);
@@ -2311,6 +2405,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         popup(e.left ? 'GEM! ' + e.left + ' LEFT' : 'ALL GEMS!', 'gem');
       } else if (e.type === 'levelup' && announceLevels) {
         Sound.sfx('level');
+        if (save.prefs.effects) retrigger(boardWrap, 'levelup');
         slots.forEach((sl, i) => { if ((hudSpec()[i] || [])[2] === 'level') retrigger(sl.node, 'pulse'); });
         popup('LEVEL ' + e.level);
       } else if (e.type === 'zenwipe') {
@@ -2439,6 +2534,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         rangeRow('startLevel', 'Marathon start level', 1, 15, 1, SETTING_FMT.startLevel) +
         segRow('nextCount', 'Next pieces shown', [1, 2, 3, 4, 5], String) +
         switchRow('ghost', 'Ghost piece') +
+        switchRow('effects', 'Full animations (off = calm)') +
       '</div>' +
       '<div class="set-group"><h4>Sound</h4>' +
         switchRow('sound', 'Sound effects') + rangeRow('sfxVol', 'Effects volume', 0, 100, 5, SETTING_FMT.sfxVol) +
@@ -2460,6 +2556,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     save.prefs[pref] = value;
     persist();
     if (pref === 'nextCount') layout();
+    if (pref === 'effects') document.body.classList.toggle('calm', !value);
     if (pref === 'sound' || pref === 'sfxVol' || pref === 'musicVol') Sound.applyVolumes();
     if (pref === 'sound' && value) { Sound.unlock(); Sound.sfx('click'); }
     if (pref === 'zenSpeed' && game && session && session.mode === 'zen') {
@@ -2599,6 +2696,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 
   // Short beat between the final move and the results card.
   function beginEnding(now) {
+    endStart = now;
     game.releaseAll();
     screen = 'ending';
     const o = game.outcome;
@@ -2710,6 +2808,18 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         }
         break;
       }
+    }
+    // Phase 5: more end-of-game stats (only the ones that happened).
+    if (g.piecesPlaced > 0 && s.mode !== 'sprint') {
+      R.stats.push(['Pieces / sec', (g.piecesPlaced / Math.max(1, g.elapsedMs / 1000)).toFixed(2)]);
+    }
+    if (g.lines > 0) {
+      const k = g.stats.clears;
+      R.stats.push(['Clears 1 · 2 · 3 · 4', k[1] + ' · ' + k[2] + ' · ' + k[3] + ' · ' + k[4]]);
+      if (g.stats.tspins) R.stats.push(['T-spins', g.stats.tspins]);
+      if (g.stats.maxCombo) R.stats.push(['Best combo', '×' + g.stats.maxCombo]);
+      if (g.stats.b2bs) R.stats.push(['Back-to-backs', g.stats.b2bs]);
+      if (g.stats.perfectClears) R.stats.push(['Perfect clears', g.stats.perfectClears]);
     }
     persist();
 

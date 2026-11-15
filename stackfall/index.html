@@ -4,7 +4,7 @@
   Stackfall — touch-first, offline falling-block puzzle game for phones (MIT License)
   https://github.com/AiryPotter/Prism-Stack
   Single self-contained file. Works offline.
-  Game modes: Marathon (Easy/Normal/Hard), 20 Stages, Sprint, Ultra,
+  Game modes: Marathon (Easy/Normal/Hard), 30 Stages, Sprint, Ultra,
   Daily Challenge and Zen. The rules engine below is an exact copy of
   Prism Stack's (tests check the two stay identical).
   No ads. No analytics. No trackers. No network requests.
@@ -442,7 +442,8 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
       this.piecesPlaced = 0;
       this.b2b = false;        // last line clear was "difficult"
       this.combo = -1;         // consecutive line-clearing locks, minus one
-      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0 };
+      // clears[n] = how many n-line clears (any kind, T-spins included).
+      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0, clears: [0, 0, 0, 0, 0] };
       this.elapsedMs = 0;
       this.zenWipes = 0;
 
@@ -736,6 +737,7 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
       if (tspin) this.stats.tspins++;
       if (b2b) this.stats.b2bs++;
       if (n === 4) this.stats.quads++;
+      this.stats.clears[Math.min(n, 4)]++;
       if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
 
       this.lines += n;
@@ -1004,7 +1006,7 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
     return out;
   }
 
-  // 20 stages mixing three goal types. Speed rises every 4 stages (levels 1–5).
+  // 30 stages mixing three goal types. Speed rises every 4 stages (levels 1–8).
   //   lines: clear N lines          (stars by time)
   //   timed: clear N lines in T sec (stars by time)
   //   dig:   collect every gem      (stars by pieces used)
@@ -1029,6 +1031,17 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
     { type: 'dig',   rows: 11, gems: 5, messy: 0.55 },
     { type: 'timed', lines: 30, time: 170 },
     { type: 'dig',   rows: 12, gems: 6, messy: 0.6 },
+    // Stages 21–30 (Phase 5): longer goals, messier junk, faster speed.
+    { type: 'lines', lines: 30 },
+    { type: 'dig',   rows: 12, gems: 6, messy: 0.65 },
+    { type: 'timed', lines: 30, time: 160 },
+    { type: 'dig',   rows: 13, gems: 6, messy: 0.7 },
+    { type: 'lines', lines: 35 },
+    { type: 'dig',   rows: 13, gems: 7, messy: 0.75 },
+    { type: 'timed', lines: 35, time: 180 },
+    { type: 'dig',   rows: 14, gems: 7, messy: 0.8 },
+    { type: 'timed', lines: 40, time: 200 },
+    { type: 'dig',   rows: 14, gems: 8, messy: 0.85 },
   ];
   // Star targets. Tuned with the test bot, then loosened for humans.
   const STAR_TUNING = { msPerLine: 5000, timedFraction: 0.6, digPerRow: 2.5, digPerMessy: 1.6, digExtra: 2, twoStar: 1.5 };
