@@ -1,0 +1,11 @@
+# Secrets - never commit
+.env
+.env.*
+*.pem
+*.key
+
+# OS / editor clutter
+Thumbs.db
+desktop.ini
+.DS_Store
+node_modules/
