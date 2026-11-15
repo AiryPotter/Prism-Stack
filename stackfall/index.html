@@ -4,6 +4,9 @@
   Stackfall — touch-first, offline falling-block puzzle game for phones (MIT License)
   https://github.com/AiryPotter/Prism-Stack
   Single self-contained file. Works offline.
+  Game modes: Marathon (Easy/Normal/Hard), 20 Stages, Sprint, Ultra,
+  Daily Challenge and Zen. The rules engine below is an exact copy of
+  Prism Stack's (tests check the two stay identical).
   No ads. No analytics. No trackers. No network requests.
   The only data stored is your best score, settings and any
   sound clips you add yourself, all kept on your own phone.
@@ -119,12 +122,53 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
 .sbtn{flex:0 0 auto;height:34px;min-width:38px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--btn);font-weight:800;font-size:12px}
 .sbtn:active{background:var(--btnOn)}
 .smsg{min-height:16px;margin-top:10px;font-size:12px;color:var(--accent)}
+/* ---------- game modes (menus, stages, results) ---------- */
+.conf{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat.warn{color:#ff6b81}
+.mblock{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel);text-align:left}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;font-weight:900;font-size:16px}
+.mhead small{font-size:12px;color:var(--muted);font-weight:700}
+.seg{display:flex;gap:6px;margin-top:10px}
+.seg button{flex:1;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--btn);color:var(--muted);font-weight:800;font-size:13px}
+.seg button.on{color:#1b1400;background:var(--accent);border-color:var(--accent)}
+.mdesc{font-size:11px;color:var(--muted);margin-top:8px}
+.mblock .primary{margin-top:10px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.mbtn{min-height:62px;border-radius:14px;border:1px solid var(--line);background:var(--btn);text-align:left;padding:9px 11px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.mbtn b{font-size:15px;font-weight:900}
+.mbtn small{font-size:11px;color:var(--muted);font-weight:600;line-height:1.25}
+.mbtn.wide{grid-column:1/-1;background:linear-gradient(135deg,rgba(255,200,87,.16),rgba(255,255,255,.04));border-color:rgba(255,200,87,.35)}
+.mbtn:active,.tile:active,.seg button:active{background:var(--btnOn)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.tile{aspect-ratio:1/1;border-radius:12px;border:1px solid var(--line);background:var(--btn);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:0}
+.tile b{font-size:18px;font-weight:900}
+.tile .k{font-size:8px;letter-spacing:.1em;color:var(--muted);font-weight:800;text-transform:uppercase}
+.tile .st{font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px}
+.tile .st i{font-style:normal;color:var(--accent)}
+.tile.done{border-color:rgba(255,200,87,.35)}
+.tile.next{border-color:var(--accent);box-shadow:0 0 0 2px rgba(255,200,87,.25)}
+.tile:disabled{opacity:.35}
+.kind{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;background:var(--btn);border:1px solid var(--line)}
+.kind.dig{color:#ff9fd8}.kind.timed{color:#7fd6ff}.kind.lines{color:var(--accent)}
+.goal{font-size:17px;font-weight:800;margin-top:10px}
+.rows{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin-top:14px;text-align:left;font-size:13px}
+.rows span{color:var(--muted)}
+.rows b{font-variant-numeric:tabular-nums;text-align:right}
+.stars{font-size:34px;letter-spacing:6px;margin-top:8px;color:rgba(255,255,255,.18)}
+.stars .on{color:var(--accent);text-shadow:0 0 16px rgba(255,200,87,.6)}
+.ttl.win{color:var(--accent)}.ttl.clear{color:#7AE3C3}.ttl.fail{color:#ff6b81}
+.hint{font-size:12px;color:var(--muted);margin-top:10px}
+.speed{margin-top:16px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.speed label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.04em}
+.speed output{color:var(--accent);font-weight:900;text-align:right}
+.speed input[type=range]{display:block;width:100%;height:40px;margin:6px 0 0;accent-color:var(--accent);touch-action:none;cursor:pointer}
+.speed .ends{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:700}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <div class="hl"><div class="brand">STACK<span>FALL</span></div><div class="conf">AD-FREE</div></div>
+    <div class="hl"><div class="brand">STACK<span>FALL</span></div><div class="conf" id="badge">AD-FREE</div></div>
     <div class="hr">
       <button class="iconbtn" id="bFs" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button class="iconbtn" id="bPause" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></button>
@@ -137,9 +181,9 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
       <div class="card"><div class="label">Next</div>
         <canvas class="mini big" id="n0"></canvas><canvas class="mini" id="n1"></canvas><canvas class="mini" id="n2"></canvas></div>
       <div class="card tap" id="holdCard"><div class="label">Hold</div><canvas class="mini" id="hc"></canvas></div>
-      <div class="card"><div class="label">Score</div><div class="stat" id="sScore">0</div></div>
-      <div class="card"><div class="label">Lines</div><div class="stat" id="sLines">0</div></div>
-      <div class="card"><div class="label">Level</div><div class="stat" id="sLevel">1</div></div>
+      <div class="card"><div class="label" id="sl0">Score</div><div class="stat" id="sv0">0</div></div>
+      <div class="card"><div class="label" id="sl1">Lines</div><div class="stat" id="sv1">0</div></div>
+      <div class="card"><div class="label" id="sl2">Level</div><div class="stat" id="sv2">1</div></div>
     </div>
   </div>
 
@@ -160,35 +204,949 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
 <div id="overlay"><div class="sheet" id="sheet"></div></div>
 <input type="file" id="fileIn" accept="audio/*" hidden>
 
+<!-- =======================================================================
+     GAME ENGINE — exact copy of Prism Stack's game-core script.
+     Pure rules: no DOM, no timers, no storage, no network. Edit it in
+     Prism Stack first, then copy it here; the tests fail if they differ.
+     ======================================================================= -->
+<script id="game-core">
+(function (root) {
+  'use strict';
+
+  // ===================================================================
+  // CONSTANTS & TUNING
+  // ===================================================================
+  const CONFIG = Object.freeze({
+    COLS: 10,
+    VISIBLE_ROWS: 20,
+    HIDDEN_ROWS: 20,           // buffer above the visible field
+    NEXT_COUNT: 5,
+    TICK_MS: 1000 / 60,        // fixed logic step
+    DAS_MS: 170,               // delayed auto shift
+    ARR_MS: 50,                // auto repeat rate (0 = instant)
+    SOFT_DROP_FACTOR: 20,      // soft drop = gravity × this
+    LOCK_DELAY_MS: 500,
+    MAX_LOCK_RESETS: 15,
+    LINE_CLEAR_DELAY_MS: 200,
+    LINES_PER_LEVEL: 10,
+    GRAVITY_LEVEL_CAP: 20,
+    SPAWN_X: 3,
+  });
+  const TOTAL_ROWS = CONFIG.HIDDEN_ROWS + CONFIG.VISIBLE_ROWS;
+
+  // ===================================================================
+  // TETROMINO DEFINITIONS
+  // Cells are [x, y] inside the piece's SRS bounding box, y pointing down.
+  // Rotation states 0, R, 2, L are generated by rotating the box clockwise.
+  // Board cell values: piece letters, 'X' = junk block, 'G' = gem block.
+  // ===================================================================
+  const TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+
+  const BASE_SHAPES = {
+    I: { size: 4, cells: [[0, 1], [1, 1], [2, 1], [3, 1]] },
+    O: { size: 4, cells: [[1, 0], [2, 0], [1, 1], [2, 1]], fixed: true },
+    T: { size: 3, cells: [[1, 0], [0, 1], [1, 1], [2, 1]] },
+    S: { size: 3, cells: [[1, 0], [2, 0], [0, 1], [1, 1]] },
+    Z: { size: 3, cells: [[0, 0], [1, 0], [1, 1], [2, 1]] },
+    J: { size: 3, cells: [[0, 0], [0, 1], [1, 1], [2, 1]] },
+    L: { size: 3, cells: [[2, 0], [0, 1], [1, 1], [2, 1]] },
+  };
+
+  function rotateCellsCW(cells, size) {
+    return cells.map(([x, y]) => [size - 1 - y, x]);
+  }
+
+  const SHAPES = {};
+  for (const type of TYPES) {
+    const def = BASE_SHAPES[type];
+    const states = [def.cells];
+    for (let i = 1; i < 4; i++) {
+      states.push(def.fixed ? def.cells : rotateCellsCW(states[i - 1], def.size));
+    }
+    SHAPES[type] = states;
+  }
+
+  // ===================================================================
+  // SRS WALL KICKS
+  // Offsets are [dx, dy] with +y = UP (as published). Converted when applied.
+  // Key format: "from>to" using states 0=spawn, 1=R, 2=180, 3=L.
+  // ===================================================================
+  const KICKS_JLSTZ = {
+    '0>1': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+    '1>0': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+    '1>2': [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+    '2>1': [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+    '2>3': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+    '3>2': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+    '3>0': [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+    '0>3': [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+  };
+  const KICKS_I = {
+    '0>1': [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+    '1>0': [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+    '1>2': [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
+    '2>1': [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
+    '2>3': [[0, 0], [2, 0], [-1, 0], [2, 1], [-1, -2]],
+    '3>2': [[0, 0], [-2, 0], [1, 0], [-2, -1], [1, 2]],
+    '3>0': [[0, 0], [1, 0], [-2, 0], [1, -2], [-2, 1]],
+    '0>3': [[0, 0], [-1, 0], [2, 0], [-1, 2], [2, -1]],
+  };
+  // 180° rotation is not part of SRS; this small set tries in place, sideways, then up/down.
+  const KICKS_180 = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
+  const NO_KICK = [[0, 0]];
+
+  function getKicks(type, from, to) {
+    if (type === 'O') return NO_KICK;
+    if ((from + 2) % 4 === to) return KICKS_180;
+    const table = type === 'I' ? KICKS_I : KICKS_JLSTZ;
+    return table[from + '>' + to];
+  }
+
+  // ===================================================================
+  // PIECE GENERATION — 7-bag randomizer
+  // ===================================================================
+  // Small seeded PRNG (stages, Daily Challenge and tests use fixed seeds).
+  function mulberry32(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  class Bag {
+    constructor(rng) { this.rng = rng || Math.random; this.pool = []; }
+    refill() {
+      const a = TYPES.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(this.rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      this.pool = a;
+    }
+    next() {
+      if (this.pool.length === 0) this.refill();
+      return this.pool.pop();
+    }
+  }
+
+  // ===================================================================
+  // LEVELS & GRAVITY
+  // Accepts fractional levels (used by Easy/Normal difficulty scaling).
+  // ===================================================================
+  function secondsPerRow(level) {
+    const L = Math.min(Math.max(level, 1), CONFIG.GRAVITY_LEVEL_CAP);
+    return Math.pow(0.8 - (L - 1) * 0.007, L - 1);
+  }
+
+  // ===================================================================
+  // SCORING (guideline values; everything except drops is × level)
+  //   Line clears, T-spins (full + mini), back-to-back ×1.5,
+  //   combos (50 × combo) and perfect clears.
+  // ===================================================================
+  const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800];
+  const TSPIN_POINTS      = [400, 800, 1200, 1600];   // by lines cleared (0–3)
+  const TSPIN_MINI_POINTS = [100, 200, 400];          // by lines cleared (0–2)
+  const PERFECT_CLEAR_POINTS = [0, 800, 1200, 1800, 2000];
+  const PERFECT_CLEAR_B2B_QUAD = 3200;
+  const COMBO_POINTS = 50;
+  const B2B_MULTIPLIER = 1.5;
+
+  function scoreForLineClear(lines, level) {
+    return (LINE_CLEAR_POINTS[lines] || 0) * level;
+  }
+  // Base points for one lock, before level, back-to-back, combo and perfect
+  // clear. tspin: null | 'mini' | 'full'.
+  function basePoints(lines, tspin) {
+    if (tspin === 'full') return TSPIN_POINTS[lines] || 0;
+    if (tspin === 'mini') return TSPIN_MINI_POINTS[lines] || 0;
+    return LINE_CLEAR_POINTS[lines] || 0;
+  }
+  // "Difficult" clears keep a back-to-back chain going: a Quad, or any
+  // T-spin (full or mini) that clears at least one line.
+  function isDifficult(lines, tspin) {
+    return lines >= 4 || (!!tspin && lines > 0);
+  }
+  // Display name for a clear, e.g. "T-SPIN DOUBLE", "MINI T-SPIN", "QUAD".
+  const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD'];
+  function clearName(lines, tspin) {
+    if (tspin) {
+      const t = tspin === 'mini' ? 'MINI T-SPIN' : 'T-SPIN';
+      return lines ? t + ' ' + CLEAR_NAMES[lines] : t;
+    }
+    return CLEAR_NAMES[lines] || '';
+  }
+
+  // ===================================================================
+  // BOARD
+  // board[y][x] = null or a cell letter. Row 0 is the top of the buffer.
+  // ===================================================================
+  function emptyRow() { return new Array(CONFIG.COLS).fill(null); }
+  function createBoard() {
+    const b = [];
+    for (let y = 0; y < TOTAL_ROWS; y++) b.push(emptyRow());
+    return b;
+  }
+
+  // ===================================================================
+  // RULES — what makes each mode different. Defaults = Marathon (Hard).
+  // ===================================================================
+  const DEFAULT_RULES = Object.freeze({
+    id: 'marathon',
+    gravityScale: 1,      // how quickly speed rises with level (0 = never)
+    speedLevel: 0,        // > 0 fixes the speed at this level
+    lineGoal: 0,          // win when this many lines are cleared
+    gemGoal: false,       // win when every gem block is cleared
+    timeLimitMs: 0,       // 0 = no time limit
+    onTimeUp: 'lose',     // 'lose' (stages) or 'finish' (Ultra, Daily)
+    noTopOut: false,      // Zen: wipe the board instead of game over
+    secondsPerRow: 0,     // > 0: fixed fall speed (Zen practice); Infinity = blocks don't fall
+    garbage: null,        // junk rows (top to bottom) placed at the bottom
+    config: null,         // CONFIG overrides, e.g. { LOCK_DELAY_MS: 1000 }
+  });
+
+  // ===================================================================
+  // GAME STATE MACHINE
+  // state: 'playing' | 'clearing' | 'over'   (paused is a separate flag)
+  // outcome (when over): 'lose' | 'win' | 'finish'
+  // ===================================================================
+  class Game {
+    constructor(opts) {
+      opts = opts || {};
+      this.rules = Object.assign({}, DEFAULT_RULES, opts.rules || {});
+      this.cfg = Object.assign({}, CONFIG, this.rules.config || {}, opts.config || {});
+      this.rng = opts.rng || Math.random;
+      this.startLevel = opts.startLevel || 1;
+      this.reset();
+    }
+
+    reset() {
+      this.board = createBoard();
+      if (this.rules.garbage) {
+        const g = this.rules.garbage;
+        g.forEach((row, i) => { this.board[TOTAL_ROWS - g.length + i] = row.slice(); });
+      }
+      this.gemsTotal = this.countGems();
+      this.bag = new Bag(this.rng);
+      this.queue = [];
+      this.fillQueue();
+      this.piece = null;
+      this.holdType = null;
+      this.canHold = true;
+
+      this.score = 0;
+      this.lines = 0;
+      this.level = this.startLevel;
+      this.piecesPlaced = 0;
+      this.b2b = false;        // last line clear was "difficult"
+      this.combo = -1;         // consecutive line-clearing locks, minus one
+      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0 };
+      this.elapsedMs = 0;
+      this.zenWipes = 0;
+
+      this.state = 'playing';
+      this.paused = false;
+      this.gameOverReason = null;
+      this.outcome = null;
+
+      this.gravityAcc = 0;
+      this.lockTimer = 0;
+      this.lockResets = 0;
+
+      this.clearingRows = [];
+      this.clearTimer = 0;
+
+      // Held-input state for DAS/ARR and soft drop.
+      this.input = { left: false, right: false, soft: false };
+      this.dir = 0;
+      this.dasTimer = 0;
+      this.arrTimer = 0;
+
+      this.events = [];
+      this.spawn(this.takeNext());
+    }
+
+    // ----- Next queue ------------------------------------------------
+    fillQueue() {
+      while (this.queue.length < this.cfg.NEXT_COUNT) this.queue.push(this.bag.next());
+    }
+    takeNext() {
+      const t = this.queue.shift();
+      this.fillQueue();
+      return t;
+    }
+
+    // ----- Speed -------------------------------------------------------
+    // Seconds for a piece to fall one row right now.
+    fallSecondsPerRow() {
+      const fixed = this.rules.secondsPerRow;
+      return fixed > 0 ? fixed : secondsPerRow(this.gravityLevel());
+    }
+    // Zen practice: change the fall speed at any time (Infinity = frozen).
+    setSecondsPerRow(s) {
+      this.rules.secondsPerRow = s > 0 ? s : 0;
+      this.gravityAcc = 0;
+    }
+    gravityLevel() {
+      if (this.rules.speedLevel > 0) return this.rules.speedLevel;
+      return 1 + (this.level - 1) * this.rules.gravityScale;
+    }
+
+    // ----- Gems --------------------------------------------------------
+    countGems(excludeRows) {
+      const skip = excludeRows ? new Set(excludeRows) : null;
+      let n = 0;
+      for (let y = 0; y < TOTAL_ROWS; y++) {
+        if (skip && skip.has(y)) continue;
+        const row = this.board[y];
+        for (let x = 0; x < this.cfg.COLS; x++) if (row[x] === 'G') n++;
+      }
+      return n;
+    }
+
+    // ----- Collision ---------------------------------------------------
+    collides(type, rot, x, y) {
+      const cells = SHAPES[type][rot];
+      for (let i = 0; i < 4; i++) {
+        const cx = x + cells[i][0];
+        const cy = y + cells[i][1];
+        if (cx < 0 || cx >= this.cfg.COLS || cy < 0 || cy >= TOTAL_ROWS) return true;
+        if (this.board[cy][cx] !== null) return true;
+      }
+      return false;
+    }
+    cellsOf(p) {
+      return SHAPES[p.type][p.rot].map(([dx, dy]) => [p.x + dx, p.y + dy]);
+    }
+    isOnGround() {
+      const p = this.piece;
+      return !!p && this.collides(p.type, p.rot, p.x, p.y + 1);
+    }
+    ghostY() {
+      const p = this.piece;
+      if (!p) return null;
+      let y = p.y;
+      while (!this.collides(p.type, p.rot, p.x, y + 1)) y++;
+      return y;
+    }
+
+    // ----- Spawning ----------------------------------------------------
+    spawn(type) {
+      const p = {
+        type, rot: 0,
+        x: this.cfg.SPAWN_X,
+        y: this.cfg.HIDDEN_ROWS - 2,   // just above the visible field
+        lowestY: 0,
+        lastWasRotate: false,           // for T-spin detection
+        lastKick: -1,
+        lastRot180: false,
+      };
+      this.piece = p;
+      if (this.collides(type, 0, p.x, p.y)) {
+        if (this.rules.noTopOut) this.zenWipe();
+        else { this.endGame('blockout'); return false; }
+      }
+      if (!this.collides(type, 0, p.x, p.y + 1)) p.y += 1;  // drop one row on entry
+      p.lowestY = p.y;
+      this.gravityAcc = 0;
+      this.lockTimer = 0;
+      this.lockResets = 0;
+      this.events.push({ type: 'spawn', piece: type });
+
+      // DAS carry: a fully charged direction shifts the new piece right away.
+      if (this.dir !== 0 && this.dasTimer >= this.cfg.DAS_MS) {
+        if (this.cfg.ARR_MS <= 0) this.shiftMax(this.dir);
+        else this.tryMove(this.dir, 0);
+        this.arrTimer = 0;
+      }
+      return true;
+    }
+
+    // Zen mode: instead of game over, clear the board and keep going.
+    zenWipe() {
+      this.board = createBoard();
+      this.zenWipes++;
+      this.events.push({ type: 'zenwipe' });
+    }
+
+    // ----- Movement ----------------------------------------------------
+    // Called after any successful player move/rotation.
+    onManipulated(wasOnGround) {
+      if (wasOnGround || this.isOnGround()) {
+        this.lockResets++;
+        if (this.lockResets <= this.cfg.MAX_LOCK_RESETS) this.lockTimer = 0;
+      }
+    }
+    noteDescent() {
+      const p = this.piece;
+      if (p.y > p.lowestY) {
+        p.lowestY = p.y;
+        this.lockResets = 0;
+        this.lockTimer = 0;
+      }
+    }
+    tryMove(dx, dy) {
+      const p = this.piece;
+      if (!p || this.state !== 'playing') return false;
+      if (this.collides(p.type, p.rot, p.x + dx, p.y + dy)) return false;
+      const wasOnGround = this.isOnGround();
+      p.x += dx;
+      p.y += dy;
+      p.lastWasRotate = false;
+      if (dy > 0) this.noteDescent();
+      if (dx !== 0) {
+        this.onManipulated(wasOnGround);
+        this.events.push({ type: 'move' });
+      }
+      return true;
+    }
+    shiftMax(dir) {
+      let moved = 0;
+      while (this.tryMove(dir, 0)) moved++;
+      return moved;
+    }
+
+    // ----- Rotation (SRS) ---------------------------------------------
+    // dir: 1 = clockwise, -1 = counter-clockwise, 2 = 180°
+    tryRotate(dir) {
+      const p = this.piece;
+      if (!p || this.state !== 'playing') return false;
+      const from = p.rot;
+      const to = (((from + dir) % 4) + 4) % 4;
+      const kicks = getKicks(p.type, from, to);
+      const wasOnGround = this.isOnGround();
+      for (let i = 0; i < kicks.length; i++) {
+        const nx = p.x + kicks[i][0];
+        const ny = p.y - kicks[i][1];        // table is +y up; board is +y down
+        if (!this.collides(p.type, to, nx, ny)) {
+          p.x = nx; p.y = ny; p.rot = to;
+          p.lastWasRotate = true;
+          p.lastKick = i;
+          p.lastRot180 = dir === 2;
+          this.noteDescent();
+          this.onManipulated(wasOnGround);
+          this.events.push({ type: 'rotate', kick: i });
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // ----- Drops -------------------------------------------------------
+    hardDrop() {
+      const p = this.piece;
+      if (!p || this.state !== 'playing') return;
+      let d = 0;
+      while (!this.collides(p.type, p.rot, p.x, p.y + 1)) { p.y++; d++; }
+      if (d > 0) p.lastWasRotate = false;
+      this.score += 2 * d;
+      this.events.push({ type: 'harddrop', rows: d });
+      this.lockPiece();
+    }
+
+    // ----- T-spin detection ---------------------------------------------
+    // 3-corner rule: the last successful action was a rotation and at least
+    // 3 of the 4 corners around the T's centre are blocked (walls and floor
+    // count). Full if both "front" corners (the side the T points to) are
+    // blocked; otherwise mini, unless the rotation used the last SRS kick
+    // (a 90° turn's kick #4), which upgrades it to full.
+    tSpinType(p) {
+      if (!p || p.type !== 'T' || !p.lastWasRotate) return null;
+      const blocked = (dx, dy) => {
+        const x = p.x + dx, y = p.y + dy;
+        return x < 0 || x >= this.cfg.COLS || y < 0 || y >= TOTAL_ROWS || this.board[y][x] !== null;
+      };
+      // Corners of the 3×3 box, centre at (1,1): TL, TR, BR, BL.
+      const c = [blocked(0, 0), blocked(2, 0), blocked(2, 2), blocked(0, 2)];
+      if (c.filter(Boolean).length < 3) return null;
+      // Front corners by rotation: 0 = up (TL,TR), R (TR,BR), 2 = down (BR,BL), L (BL,TL).
+      const front = [[0, 1], [1, 2], [2, 3], [3, 0]][p.rot];
+      if (c[front[0]] && c[front[1]]) return 'full';
+      if (p.lastKick === 4 && !p.lastRot180) return 'full';
+      return 'mini';
+    }
+
+    // ----- Locking & line clearing ------------------------------------
+    lockPiece() {
+      const p = this.piece;
+      if (!p) return;
+      const tspin = this.tSpinType(p);   // check before the piece joins the board
+      const cells = this.cellsOf(p);
+      let entirelyHidden = true;
+      for (const [x, y] of cells) {
+        this.board[y][x] = p.type;
+        if (y >= this.cfg.HIDDEN_ROWS) entirelyHidden = false;
+      }
+      this.piece = null;
+      this.piecesPlaced++;
+      this.canHold = true;
+      this.events.push({ type: 'lock', cells, piece: p.type });
+
+      if (entirelyHidden) {
+        if (this.rules.noTopOut) { this.zenWipe(); this.spawn(this.takeNext()); return; }
+        this.endGame('lockout');
+        return;
+      }
+
+      const full = [];
+      for (let y = 0; y < TOTAL_ROWS; y++) {
+        if (this.board[y].every(c => c !== null)) full.push(y);
+      }
+      if (full.length === 0) {
+        // No lines: the combo ends. A T-spin with no lines still scores,
+        // but neither builds nor breaks back-to-back.
+        this.combo = -1;
+        if (tspin) {
+          const points = basePoints(0, tspin) * this.level;
+          this.score += points;
+          this.stats.tspins++;
+          this.events.push({ type: 'tspin', tspin, points, name: clearName(0, tspin) });
+        }
+        this.spawn(this.takeNext());
+        return;
+      }
+
+      const n = full.length;
+      const level = this.level;              // score uses the level at clear time
+      const difficult = isDifficult(n, tspin);
+      const b2b = difficult && this.b2b;     // continues an earlier difficult clear
+      this.b2b = difficult;
+      this.combo++;
+
+      let points = basePoints(n, tspin) * level;
+      if (b2b) points *= B2B_MULTIPLIER;
+      if (this.combo > 0) points += COMBO_POINTS * this.combo * level;
+
+      // Perfect clear: nothing left on the board once the full rows go.
+      const fullSet = new Set(full);
+      let perfect = true;
+      for (let y = 0; y < TOTAL_ROWS && perfect; y++) {
+        if (fullSet.has(y)) continue;
+        if (this.board[y].some(c => c !== null)) perfect = false;
+      }
+      if (perfect) {
+        points += (n === 4 && b2b ? PERFECT_CLEAR_B2B_QUAD : PERFECT_CLEAR_POINTS[n]) * level;
+        this.stats.perfectClears++;
+      }
+      points = Math.round(points);
+      this.score += points;
+
+      if (tspin) this.stats.tspins++;
+      if (b2b) this.stats.b2bs++;
+      if (n === 4) this.stats.quads++;
+      if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
+
+      this.lines += n;
+      const newLevel = this.startLevel + Math.floor(this.lines / this.cfg.LINES_PER_LEVEL);
+      if (newLevel > this.level) {
+        this.level = newLevel;
+        this.events.push({ type: 'levelup', level: newLevel });
+      }
+      this.events.push({
+        type: 'clear', lines: n, rows: full, points,
+        tspin, b2b, combo: this.combo, perfect, name: clearName(n, tspin),
+      });
+
+      this.clearingRows = full;
+      this.clearTimer = 0;
+
+      // Gems inside the cleared rows are collected.
+      let gemsCleared = 0;
+      for (const y of full) for (const c of this.board[y]) if (c === 'G') gemsCleared++;
+      if (gemsCleared) {
+        this.events.push({ type: 'gem', cleared: gemsCleared, left: this.countGems(full) });
+      }
+
+      // Goal reached? Finish immediately so the clock stops on this piece.
+      if (this.goalReached()) {
+        this.removeClearedRows();
+        this.endGame('goal', 'win');
+        return;
+      }
+
+      this.state = 'clearing';
+      if (this.cfg.LINE_CLEAR_DELAY_MS <= 0) this.finishClear();
+    }
+
+    goalReached() {
+      const r = this.rules;
+      if (r.lineGoal > 0 && this.lines >= r.lineGoal) return true;
+      if (r.gemGoal && this.countGems(this.clearingRows) === 0) return true;
+      return false;
+    }
+
+    removeClearedRows() {
+      const remove = new Set(this.clearingRows);
+      const kept = this.board.filter((_, y) => !remove.has(y));
+      while (kept.length < TOTAL_ROWS) kept.unshift(emptyRow());
+      this.board = kept;
+      this.clearingRows = [];
+      this.clearTimer = 0;
+    }
+
+    finishClear() {
+      this.removeClearedRows();
+      this.state = 'playing';
+      this.spawn(this.takeNext());
+    }
+
+    // ----- Hold --------------------------------------------------------
+    hold() {
+      if (this.state !== 'playing' || !this.piece || !this.canHold) return false;
+      const current = this.piece.type;
+      let incoming;
+      if (this.holdType === null) {
+        this.holdType = current;
+        incoming = this.takeNext();
+      } else {
+        incoming = this.holdType;
+        this.holdType = current;
+      }
+      this.canHold = false;
+      this.piece = null;
+      this.events.push({ type: 'hold' });
+      this.spawn(incoming);
+      return true;
+    }
+
+    // ----- Touch gestures (used by Stackfall) ---------------------------
+    // A finger drag moves exactly one cell per step (no DAS), and a slow
+    // drag down moves one row per step, scoring like soft drop (1 per row).
+    nudge(dir) {
+      if (this.state !== 'playing' || this.paused) return false;
+      return this.tryMove(dir, 0);
+    }
+    softStep() {
+      if (this.state !== 'playing' || this.paused) return false;
+      if (!this.tryMove(0, 1)) return false;
+      this.score += 1;
+      this.gravityAcc = 0;
+      return true;
+    }
+
+    // ----- Game over / win / finish -------------------------------------
+    endGame(reason, outcome) {
+      this.state = 'over';
+      this.gameOverReason = reason;
+      this.outcome = outcome || 'lose';
+      this.events.push({ type: 'gameover', reason, outcome: this.outcome });
+    }
+
+    // ----- Input interface ---------------------------------------------
+    // Actions: left, right, soft, hard, cw, ccw, r180, hold
+    press(action) {
+      if (this.state === 'over' || this.paused) return;
+      switch (action) {
+        case 'left':  this.input.left = true;  this.setDir(-1); break;
+        case 'right': this.input.right = true; this.setDir(1);  break;
+        case 'soft':  this.input.soft = true; break;
+        case 'hard':  this.hardDrop(); break;
+        case 'cw':    this.tryRotate(1); break;
+        case 'ccw':   this.tryRotate(-1); break;
+        case 'r180':  this.tryRotate(2); break;
+        case 'hold':  this.hold(); break;
+      }
+    }
+    release(action) {
+      switch (action) {
+        case 'left':
+          this.input.left = false;
+          if (this.dir === -1) this.handBack(this.input.right ? 1 : 0);
+          break;
+        case 'right':
+          this.input.right = false;
+          if (this.dir === 1) this.handBack(this.input.left ? -1 : 0);
+          break;
+        case 'soft':
+          this.input.soft = false;
+          break;
+      }
+    }
+    setDir(d) {
+      this.dir = d;
+      this.dasTimer = 0;
+      this.arrTimer = 0;
+      this.tryMove(d, 0);
+    }
+    handBack(d) {
+      this.dir = d;
+      this.dasTimer = 0;
+      this.arrTimer = 0;
+    }
+    releaseAll() {
+      this.input.left = this.input.right = this.input.soft = false;
+      this.dir = 0;
+      this.dasTimer = 0;
+      this.arrTimer = 0;
+    }
+
+    // ----- Auto shift (DAS / ARR) -------------------------------------
+    updateAutoShift(dt) {
+      if (this.dir === 0) return;
+      const prev = this.dasTimer;
+      this.dasTimer += dt;
+      if (this.state !== 'playing' || !this.piece) { this.arrTimer = 0; return; }
+      const DAS = this.cfg.DAS_MS, ARR = this.cfg.ARR_MS;
+      if (this.dasTimer < DAS) return;
+      if (ARR <= 0) { this.shiftMax(this.dir); return; }
+      if (prev < DAS) {
+        this.tryMove(this.dir, 0);
+        this.arrTimer = this.dasTimer - DAS;
+      } else {
+        this.arrTimer += dt;
+      }
+      while (this.arrTimer >= ARR) {
+        this.arrTimer -= ARR;
+        if (!this.tryMove(this.dir, 0)) { this.arrTimer = 0; break; }
+      }
+    }
+
+    // ----- Main tick (fixed step) -------------------------------------
+    tick(dt) {
+      if (this.paused || this.state === 'over') return;
+      this.elapsedMs += dt;
+
+      // Time limit (Ultra, Daily, timed stages).
+      const limit = this.rules.timeLimitMs;
+      if (limit > 0 && this.elapsedMs >= limit) {
+        this.elapsedMs = limit;
+        this.endGame('timeup', this.rules.onTimeUp === 'finish' ? 'finish' : 'lose');
+        return;
+      }
+
+      this.updateAutoShift(dt);
+
+      if (this.state === 'clearing') {
+        this.clearTimer += dt;
+        if (this.clearTimer >= this.cfg.LINE_CLEAR_DELAY_MS) this.finishClear();
+        return;
+      }
+      if (!this.piece) return;
+
+      // Gravity (accumulates fractional rows; soft drop multiplies the rate).
+      const base = 1 / (this.fallSecondsPerRow() * 1000);
+      const soft = this.input.soft;
+      // Soft drop always works, even when blocks are frozen (at least level-1 soft speed).
+      const rate = soft ? Math.max(base, 1 / 1000) * this.cfg.SOFT_DROP_FACTOR : base;
+      this.gravityAcc += dt * rate;
+      while (this.gravityAcc >= 1) {
+        if (this.tryMove(0, 1)) {
+          this.gravityAcc -= 1;
+          if (soft) this.score += 1;
+        } else {
+          this.gravityAcc = 0;
+          break;
+        }
+      }
+
+      // Lock delay.
+      if (this.isOnGround()) {
+        this.gravityAcc = 0;
+        if (this.lockResets > this.cfg.MAX_LOCK_RESETS) { this.lockPiece(); return; }
+        this.lockTimer += dt;
+        if (this.lockTimer >= this.cfg.LOCK_DELAY_MS) this.lockPiece();
+      } else {
+        this.lockTimer = 0;
+      }
+    }
+
+    drainEvents() {
+      const e = this.events;
+      this.events = [];
+      return e;
+    }
+  }
+
+  // ===================================================================
+  // MODES — difficulty, junk piles, stages, daily challenge
+  // ===================================================================
+  const DIFFICULTY = Object.freeze({
+    easy:   { label: 'Easy',   gravityScale: 1 / 3, lockDelayMs: 1000, desc: 'Slow speed-up · 1 second to place pieces' },
+    normal: { label: 'Normal', gravityScale: 1 / 2, lockDelayMs: 500,  desc: 'Speeds up at half the pace of Hard' },
+    hard:   { label: 'Hard',   gravityScale: 1,     lockDelayMs: 500,  desc: 'Full speed · the original challenge' },
+  });
+
+  function fmtClock(ms) {
+    const s = Math.round(ms / 1000);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  // Junk pile: each row has exactly one hole, so every row can always be cleared.
+  // messy = chance the hole moves column from one row to the next.
+  // Gems are placed in distinct rows; the deepest is always in the bottom third.
+  function makeGarbage(rows, gems, messy, rng) {
+    const COLS = CONFIG.COLS;
+    const out = [];
+    let hole = Math.floor(rng() * COLS);
+    for (let i = 0; i < rows; i++) {
+      if (i > 0 && rng() < messy) {
+        let h;
+        do { h = Math.floor(rng() * COLS); } while (h === hole);
+        hole = h;
+      }
+      const row = new Array(COLS).fill('X');
+      row[hole] = null;
+      out.push(row);
+    }
+    if (gems > 0) {
+      const chosen = new Set();
+      const bottomStart = Math.floor(rows * 2 / 3);
+      chosen.add(bottomStart + Math.floor(rng() * (rows - bottomStart)));
+      while (chosen.size < Math.min(gems, rows)) chosen.add(Math.floor(rng() * rows));
+      for (const r of chosen) {
+        const filled = [];
+        out[r].forEach((c, x) => { if (c) filled.push(x); });
+        out[r][filled[Math.floor(rng() * filled.length)]] = 'G';
+      }
+    }
+    return out;
+  }
+
+  // 20 stages mixing three goal types. Speed rises every 4 stages (levels 1–5).
+  //   lines: clear N lines          (stars by time)
+  //   timed: clear N lines in T sec (stars by time)
+  //   dig:   collect every gem      (stars by pieces used)
+  const STAGE_DEFS = [
+    { type: 'lines', lines: 5 },
+    { type: 'dig',   rows: 3,  gems: 1, messy: 0 },
+    { type: 'lines', lines: 10 },
+    { type: 'dig',   rows: 4,  gems: 2, messy: 0.1 },
+    { type: 'timed', lines: 10, time: 100 },
+    { type: 'dig',   rows: 5,  gems: 2, messy: 0.2 },
+    { type: 'lines', lines: 15 },
+    { type: 'dig',   rows: 6,  gems: 3, messy: 0.25 },
+    { type: 'timed', lines: 15, time: 120 },
+    { type: 'dig',   rows: 8,  gems: 3, messy: 0.3 },
+    { type: 'lines', lines: 20 },
+    { type: 'dig',   rows: 8,  gems: 4, messy: 0.4 },
+    { type: 'timed', lines: 20, time: 140 },
+    { type: 'dig',   rows: 9,  gems: 4, messy: 0.45 },
+    { type: 'lines', lines: 25 },
+    { type: 'dig',   rows: 10, gems: 4, messy: 0.5 },
+    { type: 'timed', lines: 25, time: 150 },
+    { type: 'dig',   rows: 11, gems: 5, messy: 0.55 },
+    { type: 'timed', lines: 30, time: 170 },
+    { type: 'dig',   rows: 12, gems: 6, messy: 0.6 },
+  ];
+  // Star targets. Tuned with the test bot, then loosened for humans.
+  const STAR_TUNING = { msPerLine: 5000, timedFraction: 0.6, digPerRow: 2.5, digPerMessy: 1.6, digExtra: 2, twoStar: 1.5 };
+
+  function buildStage(d, n) {
+    const T = STAR_TUNING;
+    const speed = 1 + Math.floor((n - 1) / 4);
+    const st = { n, type: d.type, speed, seed: 1000 + n, def: d };
+    const rules = { id: 'stage', speedLevel: speed };
+    if (d.type === 'dig') {
+      const garbage = makeGarbage(d.rows, d.gems, d.messy, mulberry32(7000 + n));
+      let deepest = 0;
+      garbage.forEach((row, i) => { if (row.includes('G')) deepest = i; });
+      rules.garbage = garbage;
+      rules.gemGoal = true;
+      st.kind = 'Dig';
+      st.goalText = 'Dig out all ' + d.gems + (d.gems > 1 ? ' gems' : ' gem');
+      st.metric = 'pieces';
+      st.par3 = Math.ceil((deepest + 1) * (T.digPerRow + d.messy * T.digPerMessy)) + T.digExtra;
+      st.par2 = Math.floor(st.par3 * T.twoStar);
+    } else {
+      rules.lineGoal = d.lines;
+      st.metric = 'time';
+      if (d.type === 'timed') {
+        rules.timeLimitMs = d.time * 1000;
+        rules.onTimeUp = 'lose';
+        st.kind = 'Timed';
+        st.goalText = 'Clear ' + d.lines + ' lines in ' + fmtClock(d.time * 1000);
+        st.par3 = Math.round(d.time * T.timedFraction) * 1000;
+      } else {
+        st.kind = 'Lines';
+        st.goalText = 'Clear ' + d.lines + ' lines';
+        st.par3 = d.lines * T.msPerLine;
+      }
+      st.par2 = Math.round(st.par3 * T.twoStar / 1000) * 1000;
+      if (rules.timeLimitMs) st.par2 = Math.min(st.par2, rules.timeLimitMs);
+    }
+    st.par3Text = st.metric === 'pieces' ? st.par3 + ' pieces or fewer' : fmtClock(st.par3) + ' or faster';
+    st.par2Text = st.metric === 'pieces' ? st.par2 + ' pieces or fewer' : fmtClock(st.par2) + ' or faster';
+    st.rules = rules;
+    return st;
+  }
+  const STAGES = STAGE_DEFS.map((d, i) => buildStage(d, i + 1));
+
+  // 3 stars at or under par, 2 within 1.5× par, 1 for any clear.
+  function starsFor(stage, g) {
+    if (g.outcome !== 'win') return 0;
+    const v = stage.metric === 'pieces' ? g.piecesPlaced : g.elapsedMs;
+    return v <= stage.par3 ? 3 : v <= stage.par2 ? 2 : 1;
+  }
+
+  // Daily Challenge: the date picks the seed, so the same day = same puzzle.
+  function dailySeed(dateKey) {
+    let h = 2166136261;
+    const s = 'prism-daily:' + dateKey;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+
+  // Turn a menu choice into game rules plus an optional fixed seed.
+  function buildMode(s) {
+    switch (s.mode) {
+      case 'marathon': {
+        const d = DIFFICULTY[s.difficulty] || DIFFICULTY.hard;
+        return { seed: null, rules: { id: 'marathon', gravityScale: d.gravityScale, config: { LOCK_DELAY_MS: d.lockDelayMs } } };
+      }
+      case 'sprint': return { seed: null, rules: { id: 'sprint', gravityScale: 0, lineGoal: 40 } };
+      case 'ultra':  return { seed: null, rules: { id: 'ultra', gravityScale: 0.5, timeLimitMs: 120000, onTimeUp: 'finish' } };
+      case 'zen':    return { seed: null, rules: { id: 'zen', gravityScale: 0, noTopOut: true,
+                                                   secondsPerRow: s.secondsPerRow > 0 ? s.secondsPerRow : 0 } };
+      case 'daily': {
+        const seed = dailySeed(s.date);
+        return { seed, rules: {
+          id: 'daily', gravityScale: 0.5, timeLimitMs: 180000, onTimeUp: 'finish',
+          garbage: makeGarbage(4, 0, 0.35, mulberry32(seed ^ 0x5bd1e995)),
+        } };
+      }
+      case 'stage': {
+        const st = STAGES[s.stage - 1];
+        if (!st) throw new Error('No such stage: ' + s.stage);
+        return { seed: st.seed, rules: st.rules };
+      }
+    }
+    throw new Error('Unknown mode: ' + s.mode);
+  }
+
+  function createGame(s) {
+    const m = buildMode(s);
+    return new Game({ rng: m.seed == null ? Math.random : mulberry32(m.seed), rules: m.rules });
+  }
+
+  root.PrismCore = {
+    CONFIG, TOTAL_ROWS, TYPES, SHAPES,
+    KICKS_JLSTZ, KICKS_I, KICKS_180, getKicks,
+    Bag, mulberry32, secondsPerRow, scoreForLineClear, LINE_CLEAR_POINTS,
+    TSPIN_POINTS, TSPIN_MINI_POINTS, PERFECT_CLEAR_POINTS, PERFECT_CLEAR_B2B_QUAD,
+    COMBO_POINTS, B2B_MULTIPLIER, basePoints, isDifficult, clearName,
+    createBoard, Game, DEFAULT_RULES,
+    DIFFICULTY, STAGES, STAR_TUNING, makeGarbage, starsFor, dailySeed, buildMode, createGame, fmtClock,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
 <script>
+/* =======================================================================
+   STACKFALL — touch layer, look, sounds and screens.
+   Game rules come from the engine above (window.PrismCore), the same
+   engine Prism Stack uses, so every mode plays by identical rules.
+   ======================================================================= */
 (function(){
 'use strict';
+var P=window.PrismCore, CONFIG=P.CONFIG, STAGES=P.STAGES, DIFFICULTY=P.DIFFICULTY, SHAPES=P.SHAPES;
 
 /* ---------- constants ---------- */
-var COLS=10, ROWS=22, HIDDEN=2, VIS=ROWS-HIDDEN;
-var LOCK_MS=500, MAX_RESETS=15, CLEAR_MS=220, DAS=160, ARR=45;
-var COLORS={I:'#FF7A6B',O:'#7AE3C3',T:'#FFC857',S:'#6FA8FF',Z:'#C58BFF',J:'#FF8FC7',L:'#B6E36A'};
-var BASE={
-  I:[4,[[0,1],[1,1],[2,1],[3,1]]], O:[2,[[0,0],[1,0],[0,1],[1,1]]],
-  T:[3,[[1,0],[0,1],[1,1],[2,1]]], S:[3,[[1,0],[2,0],[0,1],[1,1]]],
-  Z:[3,[[0,0],[1,0],[1,1],[2,1]]], J:[3,[[0,0],[0,1],[1,1],[2,1]]],
-  L:[3,[[2,0],[0,1],[1,1],[2,1]]]
-};
-var TYPES=Object.keys(BASE);
-var ROT={};
-TYPES.forEach(function(t){
-  var n=BASE[t][0], c=BASE[t][1]; ROT[t]=[];
-  for(var r=0;r<4;r++){ ROT[t].push(c); c=c.map(function(p){return [n-1-p[1],p[0]];}); }
-});
-// Wall kicks (y-up, standard tables); applied as (x+kx, y-ky)
-var K_JLSTZ={'01':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],'10':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
-  '12':[[0,0],[1,0],[1,-1],[0,2],[1,2]],'21':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
-  '23':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],'32':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
-  '30':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],'03':[[0,0],[1,0],[1,1],[0,-2],[1,-2]]};
-var K_I={'01':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],'10':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
-  '12':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],'21':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
-  '23':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],'32':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
-  '30':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],'03':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]};
+var COLS=CONFIG.COLS, VIS=CONFIG.VISIBLE_ROWS, HIDDEN=CONFIG.HIDDEN_ROWS, TOTAL=P.TOTAL_ROWS;
+var DAS=160, ARR=45, STEP=CONFIG.TICK_MS;
+var COLORS={I:'#FF7A6B',O:'#7AE3C3',T:'#FFC857',S:'#6FA8FF',Z:'#C58BFF',J:'#FF8FC7',L:'#B6E36A',X:'#5d5785',G:'#FF5FD2'};
+var TYPES=['I','O','T','S','Z','J','L'];
 
 /* ---------- storage (local only) ---------- */
 var store={
@@ -197,150 +1155,267 @@ var store={
 };
 var settings={ghost:true,haptics:true,sound:true};
 var saved=store.get('settings',{}); for(var k in saved) if(k in settings) settings[k]=!!saved[k];
-var best=store.get('best',0)||0;
+function obj(v){return v&&typeof v==='object'?v:{};}
+function loadSave(){
+  var s=obj(store.get('save',null));
+  s.best=obj(s.best); s.stages=obj(s.stages); s.stages.stars=obj(s.stages.stars); s.prefs=obj(s.prefs); s.daily=obj(s.daily);
+  if(!DIFFICULTY[s.prefs.difficulty])s.prefs.difficulty='normal';
+  // Best score from the single-mode build (it ran at full speed, like Hard).
+  var old=Number(store.get('best',0))||0;
+  if(old>(s.best['marathon-hard']||0))s.best['marathon-hard']=old;
+  return s;
+}
+var save=loadSave();
+function persist(){store.set('save',save);}
+function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function todayLabel(){return new Date().toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+function dailyBest(){return save.daily.date===todayKey()?(save.daily.score||0):0;}
+function stageStars(n){return Number(save.stages.stars[n])||0;}
+function isUnlocked(n){return n===1||stageStars(n-1)>0;}
+function totalStars(){var t=0;STAGES.forEach(function(st){t+=stageStars(st.n);});return t;}
+
+/* ---------- Zen practice speed ----------
+   Slider 0..100. 0 = frozen (blocks don't fall). 1..99 runs smoothly
+   (log scale) from 1 row every 10 s to 60 rows a second; 100 = instant. */
+var ZEN_MAX=100, ZEN_DEFAULT=36;   // 36 ≈ 1 row per second (level 1)
+function zenValue(){var v=Number(save.prefs.zenSpeed);return isFinite(v)&&v>=0&&v<=ZEN_MAX?Math.round(v):ZEN_DEFAULT;}
+function zenSpr(v){
+  if(v<=0)return Infinity;          // frozen
+  if(v>=ZEN_MAX)return 0.0004;      // instant: lands in one frame
+  return 10*Math.pow(1/600,(v-1)/(ZEN_MAX-2));
+}
+function zenLabel(v){
+  if(v<=0)return 'Frozen · blocks don’t fall';
+  if(v>=ZEN_MAX)return 'Instant · as fast as possible';
+  var s=zenSpr(v);
+  if(s>=1)return '1 row every '+(s<9.95?s.toFixed(1):'10')+' s';
+  var r=1/s; return (r<10?r.toFixed(1):Math.round(r))+' rows / second';
+}
+function zenShort(v){
+  if(v<=0)return 'Frozen'; if(v>=ZEN_MAX)return 'Instant';
+  var s=zenSpr(v); return s>=1?s.toFixed(1)+'s/row':(1/s<10?(1/s).toFixed(1):Math.round(1/s))+'/s';
+}
+function speedHTML(){
+  var v=zenValue();
+  return '<div class="speed"><label for="zenSpeed">Fall speed <output id="zenOut">'+zenLabel(v)+'</output></label>'+
+    '<input type="range" id="zenSpeed" min="0" max="'+ZEN_MAX+'" step="1" value="'+v+'" aria-label="Fall speed">'+
+    '<div class="ends"><span>Frozen</span><span>Slow</span><span>Fast</span><span>Instant</span></div></div>';
+}
+
+/* ---------- formatting ---------- */
+function clock(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function clockDown(ms){return clock(Math.ceil(ms/1000)*1000);}
+function clockMs(ms){var cs=Math.floor(ms/10),s=Math.floor(cs/100);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'.'+String(cs%100).padStart(2,'0');}
+function starStr(n){return '★'.repeat(n)+'☆'.repeat(3-n);}
+function tc(s){return String(s).toLowerCase().replace(/(^|[\s-])([a-z])/g,function(m,a,b){return a+b.toUpperCase();});}
 
 /* ---------- DOM ---------- */
 function $(id){return document.getElementById(id);}
 var cv=$('board'), ctx=cv.getContext('2d'), play=$('play'), side=$('side'), wrap=$('boardWrap');
-var overlay=$('overlay'), sheet=$('sheet'), popEl=$('pop');
+var overlay=$('overlay'), sheet=$('sheet'), popEl=$('pop'), badgeEl=$('badge');
 var minis=[$('n0'),$('n1'),$('n2')], holdCv=$('hc');
+var slotL=[$('sl0'),$('sl1'),$('sl2')], slotV=[$('sv0'),$('sv1'),$('sv2')];
 
 /* ---------- state ---------- */
-var state='menu', prevState='playing';
-var board=emptyBoard(), cur=null, bag=[], queue=[], hold=null, holdUsed=false;
-var score=0, lines=0, level=1, combo=-1, b2b=false, isNewBest=false;
-var gravAcc=0, lockTimer=0, resets=0, softDrop=false, clearRows=[], clearTimer=0;
+// state: menu | playing | paused | ending | result   (screens in between use 'menu')
+var game=null, session=null, state='menu', softHeld=false, acc=0, endingAt=0, introStage=1;
 var cell=24, dpr=1, cache={}, bgCanvas=null, dirtyUI=true;
 
-function emptyBoard(){var b=[];for(var y=0;y<ROWS;y++){b.push(new Array(COLS).fill(null));}return b;}
-function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
-function fillQueue(){while(queue.length<5){if(!bag.length)bag=shuffle(TYPES.slice());queue.push(bag.pop());}}
-function fits(t,r,x,y){
-  var c=ROT[t][r];
-  for(var i=0;i<4;i++){var nx=x+c[i][0], ny=y+c[i][1];
-    if(nx<0||nx>=COLS||ny>=ROWS) return false;
-    if(ny>=0&&board[ny][nx]) return false;}
-  return true;
+function modeTag(s){
+  switch(s.mode){
+    case 'marathon':return 'Marathon · '+DIFFICULTY[s.difficulty].label;
+    case 'sprint':return 'Sprint · 40';
+    case 'ultra':return 'Ultra · 2 min';
+    case 'daily':return 'Daily · '+todayLabel();
+    case 'zen':return 'Zen practice · '+zenShort(zenValue());
+    case 'stage':return 'Stage '+s.stage+' · '+STAGES[s.stage-1].kind;
+  }
+  return 'AD-FREE';
 }
-function gravityMs(){var l=Math.min(level,20);return Math.max(16,Math.pow(0.8-(l-1)*0.007,l-1)*1000);}
+
+/* ---------- actions (touch, buttons and keys all come through here) ---------- */
+function canAct(){return state==='playing'&&game&&game.piece&&game.state==='playing'&&!game.paused;}
+function move(dx){return canAct()?game.nudge(dx):false;}
+function softStep(){return canAct()?game.softStep():false;}
+function rotate(dir){return canAct()?game.tryRotate(dir):false;}
+function hardDrop(){if(canAct())game.hardDrop();}
+function doHold(){if(canAct())game.hold();}
+function setSoft(on){
+  if(!game)return;
+  if(on&&state==='playing'){game.press('soft');softHeld=true;}
+  else if(!on&&softHeld){game.release('soft');softHeld=false;}
+}
 
 /* ---------- game flow ---------- */
-function newGame(){
-  board=emptyBoard(); bag=[]; queue=[]; hold=null; holdUsed=false;
-  score=0; lines=0; level=1; combo=-1; b2b=false; isNewBest=false; softDrop=false; clearRows=[];
-  fillQueue(); state='playing'; hideOverlay(); spawn(); dirtyUI=true; danger();
-  last=performance.now(); reqWake(); guardBack();
+function startSession(s){
+  session=s; game=P.createGame(s); state='playing'; acc=0; softHeld=false;
+  hideOverlay(); badgeEl.textContent=modeTag(s); dirtyUI=true; danger();
+  popEl.classList.remove('go'); popEl.textContent='';   // no leftover message from the last game
+  last=performance.now(); initAudio(); reqWake(); guardBack();
 }
-function spawn(type){
-  var t=type||queue.shift(); fillQueue();
-  cur={type:t,rot:0,x:t==='O'?4:3,y:1};
-  if(!fits(t,0,cur.x,cur.y)){ cur.y=0; if(!fits(t,0,cur.x,0)){ cur=null; gameOver(); return false; } }
-  cur.lowest=cur.y; lockTimer=0; resets=0; gravAcc=0; dirtyUI=true; return true;
+function playMode(m){
+  if(m==='marathon')startSession({mode:m,difficulty:save.prefs.difficulty});
+  else if(m==='daily')startSession({mode:m,date:todayKey()});
+  else if(m==='zen')startSession({mode:m,secondsPerRow:zenSpr(zenValue())});
+  else startSession({mode:m});
 }
-function nextPiece(){holdUsed=false; spawn();}
-function canAct(){return state==='playing'&&cur;}
-function fell(){if(cur.y>cur.lowest){cur.lowest=cur.y;resets=0;lockTimer=0;}}
-function afterMove(){if(!fits(cur.type,cur.rot,cur.x,cur.y+1)&&resets<MAX_RESETS){lockTimer=0;resets++;}}
-function move(dx){
-  if(!canAct())return false;
-  if(fits(cur.type,cur.rot,cur.x+dx,cur.y)){cur.x+=dx;afterMove();sfx('move');return true;}
-  return false;
+function retry(){
+  if(!session)return;
+  if(session.mode==='zen')playMode('zen');   // use the slider's current speed
+  else startSession(Object.assign({},session));
 }
-function softStep(){
-  if(!canAct())return false;
-  if(fits(cur.type,cur.rot,cur.x,cur.y+1)){cur.y++;score+=1;gravAcc=0;fell();return true;}
-  return false;
-}
-function rotate(dir){
-  if(!canAct())return false;
-  var from=cur.rot, to=(from+dir+4)%4;
-  if(cur.type==='O'){cur.rot=to;return true;}
-  var kicks=(cur.type==='I'?K_I:K_JLSTZ)[''+from+to];
-  for(var i=0;i<kicks.length;i++){
-    var nx=cur.x+kicks[i][0], ny=cur.y-kicks[i][1];
-    if(fits(cur.type,to,nx,ny)){cur.x=nx;cur.y=ny;cur.rot=to;fell();afterMove();sfx('rotate');buzz(4);return true;}
-  }
-  return false;
-}
-function hardDrop(){
-  if(!canAct())return;
-  var d=0; while(fits(cur.type,cur.rot,cur.x,cur.y+1)){cur.y++;d++;}
-  score+=2*d; sfx('drop'); buzz(14);
-  wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake');
-  lockPiece();
-}
-function doHold(){
-  if(!canAct()||holdUsed)return;
-  var t=cur.type;
-  if(hold){var h=hold;hold=t;spawn(h);}else{hold=t;spawn();}
-  holdUsed=true; sfx('hold'); buzz(6); dirtyUI=true;
-}
-function lockPiece(){
-  var c=ROT[cur.type][cur.rot], above=true;
-  for(var i=0;i<4;i++){var x=cur.x+c[i][0], y=cur.y+c[i][1]; if(y>=0)board[y][x]=cur.type; if(y>=HIDDEN)above=false;}
-  cur=null;
-  if(above){gameOver();return;}
-  var full=[]; for(var y=0;y<ROWS;y++){if(board[y].every(Boolean))full.push(y);}
-  var n=full.length;
-  if(n){
-    combo++;
-    var pts=[0,100,300,500,800][n]*level;
-    if(n===4&&b2b)pts=Math.floor(pts*1.5);
-    var wasB2B=(n===4&&b2b); b2b=(n===4);
-    if(combo>0)pts+=50*combo*level;
-    score+=pts; lines+=n;
-    var nl=1+Math.floor(lines/10), lvlUp=nl>level; level=nl;
-    var names=['','Single','Double','Triple','Quad!'];
-    var mi=memeIndex(level), subs=[];
-    if(wasB2B)subs.push('Back-to-back'); if(combo>0)subs.push('Combo ×'+combo);
-    if(lvlUp)subs.push('Level '+level+' · '+MEMES[mi].emoji+' '+MEMES[mi].name);
-    pop(names[n],subs.join(' · '));
-    clearRows=full; clearTimer=CLEAR_MS; state='clearing';
-    playMeme(mi); if(n===4)sfx('sparkle');
-    buzz(n===4?[22,40,22]:16);
-  }else{
-    combo=-1; sfx('lock'); buzz(5); nextPiece();
-  }
-  dirtyUI=true; danger();
-}
-function finishClear(){
-  board=board.filter(function(_,i){return clearRows.indexOf(i)<0;});
-  while(board.length<ROWS)board.unshift(new Array(COLS).fill(null));
-  clearRows=[]; state='playing'; nextPiece(); danger();
-}
-function danger(){
-  var top=ROWS; for(var y=0;y<ROWS;y++){if(board[y].some(Boolean)){top=y;break;}}
-  wrap.classList.toggle('danger',top<HIDDEN+4);
-}
-function gameOver(){
-  state='over'; softDrop=false;
-  if(score>best){best=score;store.set('best',best);isNewBest=score>0;}
-  sfx('over'); buzz([40,60,90]); relWake(); showOverlay('over');
+function toMenu(){
+  game=null; session=null; state='menu'; softHeld=false; relWake();
+  badgeEl.textContent='AD-FREE'; dirtyUI=true; danger(); showOverlay('menu');
 }
 function pause(){
-  if(state!=='playing'&&state!=='clearing')return;
-  prevState=state; state='paused'; softDrop=false; relWake(); showOverlay('pause');
+  if(state!=='playing'||!game)return;
+  state='paused'; game.paused=true; game.releaseAll(); softHeld=false; relWake(); showOverlay('pause');
 }
 function resume(){
-  if(state!=='paused')return;
-  state=prevState; hideOverlay(); last=performance.now(); reqWake();
+  if(state!=='paused'||!game)return;
+  state='playing'; game.paused=false; game.releaseAll(); acc=0; hideOverlay(); last=performance.now(); reqWake();
+}
+function danger(){
+  var top=TOTAL;
+  if(game){for(var y=0;y<TOTAL;y++){if(game.board[y].some(Boolean)){top=y;break;}}}
+  wrap.classList.toggle('danger',top<HIDDEN+4);
+}
+function shake(){wrap.classList.remove('shake');void wrap.offsetWidth;wrap.classList.add('shake');}
+
+/* ---------- engine events -> sound, vibration, popups ---------- */
+function handleEvents(){
+  var evs=game.drainEvents(), locked=false, cleared=false, lvl=0;
+  for(var i=0;i<evs.length;i++){
+    var e=evs[i];
+    switch(e.type){
+      case 'move':sfx('move');break;
+      case 'rotate':sfx('rotate');buzz(4);break;
+      case 'harddrop':sfx('drop');buzz(14);shake();break;
+      case 'hold':sfx('hold');buzz(6);break;
+      case 'lock':locked=true;break;
+      case 'levelup':lvl=e.level;break;
+      case 'tspin':pop(tc(e.name)+'!','');sfx('sparkle');buzz(10);break;
+      case 'clear':{
+        cleared=true;
+        var big=e.perfect||e.tspin||e.lines===4, subs=[], title=tc(e.name)+(e.lines===4||e.tspin?'!':'');
+        if(e.perfect){subs.push(tc(e.name));title='Perfect Clear!';}
+        if(e.b2b)subs.push('Back-to-back');
+        if(e.combo>0)subs.push('Combo ×'+e.combo);
+        var mi=memeIndex(game.level);
+        if(lvl)subs.push('Level '+lvl+' · '+MEMES[mi].emoji+' '+MEMES[mi].name);
+        pop(title,subs.join(' · '));
+        playMeme(mi); if(big)sfx('sparkle');
+        buzz(big?[22,40,22]:16);
+        break;
+      }
+      case 'gem':pop(e.left?'Gem!':'All gems!',e.left?e.left+' left':'');sfx('sparkle');break;
+      case 'zenwipe':pop('Fresh start','Zen never ends');break;
+    }
+  }
+  if(locked&&!cleared){sfx('lock');buzz(5);}
+  if(locked)danger();
+}
+
+function update(dt){
+  if(state==='playing'&&game){
+    acc+=dt;
+    while(acc>=STEP&&game.state!=='over'){game.tick(STEP);acc-=STEP;}
+    handleEvents();
+    if(game.state==='over')beginEnding();
+  }else if(state==='ending'&&performance.now()>=endingAt){
+    finishGame();
+  }
+}
+
+// Short beat between the last move and the results card.
+function beginEnding(){
+  game.releaseAll(); softHeld=false; state='ending'; relWake();
+  var o=game.outcome;
+  if(o==='win'){
+    var lastStage=session.mode==='stage'&&session.stage===STAGES.length;
+    pop(session.mode==='stage'?(lastStage?'You win!':'Stage clear!'):'Finished!','');
+    sfx('sparkle'); buzz([20,40,20,40,60]);
+  }else if(o==='finish'){
+    pop("Time's up!",''); sfx('sparkle'); buzz([20,40,20]);
+  }else{
+    sfx('over'); buzz([40,60,90]);
+  }
+  endingAt=performance.now()+(o==='lose'?650:1100);
+}
+
+/* ---------- results ---------- */
+function finishGame(){
+  var g=game, s=session; state='result';
+  var R={title:'Game over',cls:'',sub:'',stars:-1,badge:'',big:'',rows:[],buttons:[],hint:''};
+  var again=[['Play again','retry',1],['Main menu','menu']];
+  switch(s.mode){
+    case 'marathon':{
+      var key='marathon-'+s.difficulty, isBest=g.score>(save.best[key]||0);
+      if(isBest)save.best[key]=g.score;
+      R.sub='Marathon · '+DIFFICULTY[s.difficulty].label; R.big=fmt(g.score);
+      R.badge=isBest&&g.score>0?'NEW BEST':'';
+      R.rows=[['Lines',g.lines],['Level',g.level],['Time',clock(g.elapsedMs)],['Best',fmt(save.best[key])]];
+      R.buttons=again; break;
+    }
+    case 'sprint':{
+      if(g.outcome==='win'){
+        var sb=!save.best.sprint||g.elapsedMs<save.best.sprint; if(sb)save.best.sprint=g.elapsedMs;
+        R.title='Finished!'; R.cls='clear'; R.sub='40 lines cleared'; R.big=clockMs(g.elapsedMs);
+        R.badge=sb?'NEW BEST':'';
+        R.rows=[['Pieces',g.piecesPlaced],['Pieces / sec',(g.piecesPlaced/Math.max(1,g.elapsedMs/1000)).toFixed(2)],['Best',clockMs(save.best.sprint)]];
+      }else{
+        R.sub=g.lines+' of 40 lines';
+        R.rows=[['Lines',g.lines],['Time',clockMs(g.elapsedMs)],['Best',save.best.sprint?clockMs(save.best.sprint):'—']];
+      }
+      R.buttons=again; break;
+    }
+    case 'ultra': case 'daily':{
+      var daily=s.mode==='daily', ib;
+      if(daily){
+        if(save.daily.date!==s.date)save.daily={date:s.date,score:0};
+        ib=g.score>(save.daily.score||0); if(ib)save.daily.score=g.score;
+      }else{ib=g.score>(save.best.ultra||0); if(ib)save.best.ultra=g.score;}
+      R.title=g.outcome==='finish'?"Time's up!":'Game over'; R.cls=g.outcome==='finish'?'clear':'';
+      R.sub=daily?'Daily Challenge · '+todayLabel():'Ultra · 2 minutes'; R.big=fmt(g.score);
+      R.badge=ib&&g.score>0?(daily?"TODAY'S BEST":'NEW BEST'):'';
+      R.rows=[['Lines',g.lines],['Level',g.level],[daily?"Today's best":'Best',fmt(daily?save.daily.score:save.best.ultra)]];
+      R.buttons=again; R.hint=daily?'A new puzzle arrives tomorrow. Same puzzle as Prism Stack on PC.':''; break;
+    }
+    case 'zen':{
+      R.title='Zen practice'; R.cls='clear'; R.sub='Speed: '+zenLabel(zenValue()); R.big=fmt(g.score);
+      R.rows=[['Lines',g.lines],['Pieces',g.piecesPlaced],['Time',clock(g.elapsedMs)]];
+      R.buttons=again; break;
+    }
+    case 'stage':{
+      var st=STAGES[s.stage-1], lastSt=s.stage===STAGES.length;
+      if(g.outcome==='win'){
+        var stars=P.starsFor(st,g), prev=stageStars(s.stage);
+        if(stars>prev)save.stages.stars[s.stage]=stars;
+        R.title=lastSt?'You win!':'Stage clear!'; R.cls=lastSt?'win':'clear';
+        R.sub=lastSt?'All '+STAGES.length+' stages cleared!':'Stage '+s.stage+' · '+st.goalText;
+        R.stars=stars; R.badge=prev&&stars>prev?'NEW BEST':'';
+        R.rows=[['Time',clock(g.elapsedMs)],['Pieces',g.piecesPlaced],['Score',fmt(g.score)],['★★★ target',st.par3Text]];
+        R.buttons=lastSt?[['Stages','stages',1],['Retry','retry'],['Main menu','menu']]
+                        :[['Next stage','next-stage',1],['Retry','retry'],['Stages','stages']];
+        R.hint=lastSt?(totalStars()===STAGES.length*3?'Perfect — every stage at ★★★!':'Go back for ★★★ on every stage.')
+                     :(stars<3?'Beat the ★★★ target to earn all three stars.':'');
+      }else{
+        R.title='Stage failed'; R.cls='fail';
+        R.sub=g.gameOverReason==='timeup'?'Out of time — so close!':'The stack reached the top.';
+        var progress=st.type==='dig'?['Gems left',g.countGems()+' of '+g.gemsTotal]
+                                    :['Lines',Math.min(g.lines,g.rules.lineGoal)+' of '+g.rules.lineGoal];
+        R.rows=[progress,['Time',clock(g.elapsedMs)],['Pieces',g.piecesPlaced]];
+        R.buttons=[['Retry','retry',1],['Stages','stages']];
+      }
+      break;
+    }
+  }
+  persist();
+  showOverlay('result',R);
 }
 
 /* ---------- update / render ---------- */
-function update(dt){
-  if(state==='clearing'){clearTimer-=dt; if(clearTimer<=0)finishClear(); return;}
-  if(state!=='playing'||!cur)return;
-  var g=softDrop?Math.max(8,Math.min(gravityMs()/20,50)):gravityMs();
-  gravAcc+=dt;
-  while(gravAcc>=g){
-    gravAcc-=g;
-    if(fits(cur.type,cur.rot,cur.x,cur.y+1)){cur.y++;if(softDrop)score+=1;fell();}
-    else{gravAcc=0;break;}
-  }
-  if(!fits(cur.type,cur.rot,cur.x,cur.y+1)){lockTimer+=dt; if(lockTimer>=LOCK_MS)lockPiece();}
-  else lockTimer=0;
-}
-
 function hex(c){return [parseInt(c.substr(1,2),16),parseInt(c.substr(3,2),16),parseInt(c.substr(5,2),16)];}
 function mix(c,w,a){var h=hex(c),t=w?255:0;return 'rgb('+h.map(function(v){return Math.round(v+(t-v)*a);}).join(',')+')';}
 function rr(c,x,y,w,h,r){w=Math.max(0,w);h=Math.max(0,h);r=Math.max(0,Math.min(r,w/2,h/2));c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
@@ -372,26 +1447,38 @@ function buildBg(){
   var p=Math.max(1,cell*0.06);
   for(var yy=0;yy<VIS;yy++)for(var xx=0;xx<COLS;xx++){rr(x,xx*cell+p,yy*cell+p,cell-2*p,cell-2*p,cell*0.24);x.fill();}
 }
-function render(){
-  var W=COLS*cell,H=VIS*cell;
+function render(now){
+  var W=COLS*cell,H=VIS*cell,x,y,i;
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
   if(bgCanvas)ctx.drawImage(bgCanvas,0,0,W,H);
-  for(var y=HIDDEN;y<ROWS;y++)for(var x=0;x<COLS;x++){var t=board[y][x]; if(t)ctx.drawImage(blockImg(t,cell),x*cell,(y-HIDDEN)*cell,cell,cell);}
-  if(cur){
-    var c=ROT[cur.type][cur.rot], i;
-    if(settings.ghost){
-      var gy=cur.y; while(fits(cur.type,cur.rot,cur.x,gy+1))gy++;
-      if(gy!==cur.y){var gi=blockImg(cur.type,cell,true);
-        for(i=0;i<4;i++){var yy=gy+c[i][1]; if(yy>=HIDDEN)ctx.drawImage(gi,(cur.x+c[i][0])*cell,(yy-HIDDEN)*cell,cell,cell);}}
+  if(!game)return;
+  var lost=game.state==='over'&&game.outcome==='lose';
+  for(y=HIDDEN;y<TOTAL;y++)for(x=0;x<COLS;x++){
+    var t=game.board[y][x]; if(!t)continue;
+    var px=x*cell, py=(y-HIDDEN)*cell;
+    ctx.drawImage(blockImg(lost?'X':t,cell),px,py,cell,cell);
+    if(t==='G'&&!lost){ // gems twinkle
+      ctx.globalAlpha=0.18+0.22*Math.sin(now/260+x*0.9+y*0.6);
+      ctx.fillStyle='#fff'; rr(ctx,px+cell*0.2,py+cell*0.2,cell*0.6,cell*0.6,cell*0.2); ctx.fill();
+      ctx.globalAlpha=1;
     }
-    var bi=blockImg(cur.type,cell);
-    for(i=0;i<4;i++){var py=cur.y+c[i][1]; if(py>=HIDDEN)ctx.drawImage(bi,(cur.x+c[i][0])*cell,(py-HIDDEN)*cell,cell,cell);}
   }
-  if(clearRows.length){
-    var a=Math.max(0,clearTimer/CLEAR_MS);
+  var p=game.piece;
+  if(p&&!lost){
+    var c=SHAPES[p.type][p.rot];
+    if(settings.ghost){
+      var gy=game.ghostY();
+      if(gy!==p.y){var gi=blockImg(p.type,cell,true);
+        for(i=0;i<4;i++){var yy=gy+c[i][1]; if(yy>=HIDDEN)ctx.drawImage(gi,(p.x+c[i][0])*cell,(yy-HIDDEN)*cell,cell,cell);}}
+    }
+    var bi=blockImg(p.type,cell);
+    for(i=0;i<4;i++){var qy=p.y+c[i][1]; if(qy>=HIDDEN)ctx.drawImage(bi,(p.x+c[i][0])*cell,(qy-HIDDEN)*cell,cell,cell);}
+  }
+  if(game.state==='clearing'){
+    var a=1-Math.min(1,game.clearTimer/CONFIG.LINE_CLEAR_DELAY_MS);
     ctx.fillStyle='rgba(255,255,255,'+(0.85*a).toFixed(3)+')';
-    clearRows.forEach(function(r){if(r>=HIDDEN){rr(ctx,2,(r-HIDDEN)*cell+1,W-4,cell-2,cell*0.3);ctx.fill();}});
+    game.clearingRows.forEach(function(r){if(r>=HIDDEN){rr(ctx,2,(r-HIDDEN)*cell+1,W-4,cell-2,cell*0.3);ctx.fill();}});
   }
 }
 function drawMini(canvas,t,dim){
@@ -400,7 +1487,7 @@ function drawMini(canvas,t,dim){
   if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph;}
   var c=canvas.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
   if(!t)return;
-  var cells=ROT[t][0], minx=9,maxx=-1,miny=9,maxy=-1;
+  var cells=SHAPES[t][0], minx=9,maxx=-1,miny=9,maxy=-1;
   cells.forEach(function(p){minx=Math.min(minx,p[0]);maxx=Math.max(maxx,p[0]);miny=Math.min(miny,p[1]);maxy=Math.max(maxy,p[1]);});
   var bw=maxx-minx+1, bh=maxy-miny+1, s=Math.floor(Math.min((w-6)/bw,(h-6)/bh,16));
   if(s<2)return;
@@ -409,16 +1496,45 @@ function drawMini(canvas,t,dim){
   cells.forEach(function(p){c.drawImage(img,ox+p[0]*s,oy+p[1]*s,s,s);});
   c.globalAlpha=1;
 }
-function fmt(n){return n<1e6?n.toLocaleString('en-US'):(n/1e6).toFixed(2)+'M';}
-var shown={s:-1,l:-1,v:-1};
+function fmt(n){n=Number(n)||0;return n<1e6?n.toLocaleString('en-US'):(n/1e6).toFixed(2)+'M';}
+var sideKey='';
 function drawSide(){
-  for(var i=0;i<3;i++)drawMini(minis[i],queue[i]||null,false);
-  drawMini(holdCv,hold,holdUsed);
+  var q=game?game.queue:[], h=game?game.holdType:null, dim=game?!game.canHold:false;
+  var key=q.slice(0,3).join('')+'|'+h+'|'+dim+'|'+cell;
+  if(key===sideKey&&!dirtyUI)return;
+  sideKey=key; dirtyUI=false;
+  for(var i=0;i<3;i++)drawMini(minis[i],q[i]||null,false);
+  drawMini(holdCv,h,dim);
 }
+// Three stat cards that change with the mode: [label, value, warn]
+function hud(){
+  var g=game, s=session;
+  if(!g||!s)return [['Score','0'],['Lines','0'],['Level','1']];
+  var r=g.rules, left=r.timeLimitMs?Math.max(0,r.timeLimitMs-g.elapsedMs):0;
+  var leftCell=['Time left',clockDown(left),left<=10000];
+  var lvl=['Level',g.level+' '+MEMES[memeIndex(g.level)].emoji];
+  switch(s.mode){
+    case 'marathon':return [['Score',fmt(g.score)],['Lines',g.lines],lvl];
+    case 'sprint':return [['Lines left',Math.max(0,40-g.lines)],['Time',clockMs(g.elapsedMs)],['Pieces',g.piecesPlaced]];
+    case 'ultra':case 'daily':return [['Score',fmt(g.score)],leftCell,['Lines',g.lines]];
+    case 'zen':return [['Score',fmt(g.score)],['Lines',g.lines],['Speed',zenShort(zenValue())]];
+    case 'stage':{
+      var st=STAGES[s.stage-1];
+      var goal=st.type==='dig'?['Gems','◆ '+g.countGems()+' left']:['Lines',Math.min(g.lines,r.lineGoal)+' / '+r.lineGoal];
+      return [goal,st.type==='timed'?leftCell:['Time',clock(g.elapsedMs)],['Pieces',g.piecesPlaced]];
+    }
+  }
+  return [];
+}
+var shown=[];
 function drawStats(){
-  if(shown.s!==score){shown.s=score;$('sScore').textContent=fmt(score);}
-  if(shown.l!==lines){shown.l=lines;$('sLines').textContent=lines;}
-  if(shown.v!==level){shown.v=level;$('sLevel').textContent=level+' '+MEMES[memeIndex(level)].emoji;}
+  var h=hud();
+  for(var i=0;i<3;i++){
+    var e=h[i]||['',''], key=e[0]+'|'+e[1]+'|'+!!e[2];
+    if(shown[i]===key)continue; shown[i]=key;
+    slotL[i].textContent=e[0]; slotV[i].textContent=e[1];
+    slotV[i].classList.toggle('warn',!!e[2]);
+  }
 }
 
 function layout(){
@@ -433,12 +1549,10 @@ function layout(){
 }
 var layoutPending=false;
 function requestLayout(){if(layoutPending)return;layoutPending=true;requestAnimationFrame(function(){layoutPending=false;layout();});}
-
 var last=performance.now();
 function frame(now){
   var dt=Math.min(100,now-last); last=now;
-  update(dt); render(); drawStats();
-  if(dirtyUI){drawSide();dirtyUI=false;}
+  update(dt); render(now); drawStats(); drawSide();
   requestAnimationFrame(frame);
 }
 
@@ -447,7 +1561,8 @@ function pop(title,sub){
   popEl.innerHTML='<b>'+title+'</b>'+(sub?'<small>'+sub+'</small>':'');
   popEl.classList.remove('go'); void popEl.offsetWidth; popEl.classList.add('go');
 }
-function buzz(p){if(settings.haptics&&navigator.vibrate){try{navigator.vibrate(p);}catch(e){}}}
+// Browsers only allow vibration after the player has touched the page.
+function buzz(p){if(!settings.haptics||!navigator.vibrate)return;if(navigator.userActivation&&!navigator.userActivation.hasBeenActive)return;try{navigator.vibrate(p);}catch(e){}}
 var actx=null, master=null;
 function initAudio(force){
   if(!settings.sound&&!force)return;
@@ -719,8 +1834,7 @@ function reqWake(){
   try{if('wakeLock' in navigator&&!wake){navigator.wakeLock.request('screen').then(function(w){wake=w;w.addEventListener('release',function(){wake=null;});}).catch(function(){});}}catch(e){}
 }
 function relWake(){try{if(wake)wake.release();}catch(e){} wake=null;}
-
-/* ---------- overlay ---------- */
+/* ---------- screens ---------- */
 var HOWTO='<div class="howto"><b>Drag</b> left / right to move<br><b>Tap</b> the board to rotate<br><b>Drag down</b> to drop faster<br><b>Flick down</b> to drop instantly<br><b>Swipe up</b> or tap <b>Hold</b> to save a piece<br>Buttons below the board work too.</div>';
 var CONF='<div class="confnote">OPEN SOURCE · NO ADS · NO TRACKING</div>';
 function toggles(){
@@ -729,9 +1843,10 @@ function toggles(){
     return '<button class="tog'+(settings[k]?' on':'')+'" data-act="tog" data-k="'+k+'">'+L[k]+'</button>';}).join('')+'</div>';
 }
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-var overlayMode='menu', soundsReturn='menu', pendingClip=-1, soundsScroll=0;
+function rowsHTML(rows){return '<div class="rows">'+rows.map(function(r){return '<span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b>';}).join('')+'</div>';}
+var overlayMode='menu', soundsReturn='menu', pendingClip=-1, soundsScroll=0, lastResult=null;
 function soundsHTML(){
-  var curI=(state==='paused')?memeIndex(level):-1;
+  var curI=(state==='paused'&&game)?memeIndex(game.level):-1;
   return '<div class="ttl">Level sounds</div>'+
     '<div class="sub">Every level has its own line-clear sound, so you can tell your level by ear. Tap ▶ to hear one.</div>'+
     '<div class="slist">'+MEMES.map(function(m,i){
@@ -747,29 +1862,78 @@ function soundsHTML(){
     '<div class="smsg" id="sndMsg"></div>'+
     '<button class="primary" data-act="back">Done</button>'+CONF;
 }
-function showOverlay(mode){
+function menuHTML(){
+  var d=save.prefs.difficulty, stars=totalStars();
+  return '<div class="logo">STACK<span>FALL</span></div><div class="chips">'+TYPES.map(function(t){return '<i style="background:'+COLORS[t]+'"></i>';}).join('')+'</div>'+
+    '<div class="mblock"><div class="mhead">Marathon<small>Best '+fmt(save.best['marathon-'+d]||0)+'</small></div>'+
+    '<div class="seg">'+['easy','normal','hard'].map(function(k){return '<button class="'+(k===d?'on':'')+'" data-act="diff" data-d="'+k+'">'+DIFFICULTY[k].label+'</button>';}).join('')+'</div>'+
+    '<div class="mdesc">'+esc(DIFFICULTY[d].desc)+'</div>'+
+    '<button class="primary" data-act="play" data-m="marathon">Play Marathon</button></div>'+
+    '<div class="mgrid">'+
+      '<button class="mbtn wide" data-act="stages"><b>Stages</b><small>'+(stars?'★ '+stars+' / '+STAGES.length*3+' · level by level':STAGES.length+' stages · clear each one to win')+'</small></button>'+
+      '<button class="mbtn" data-act="play" data-m="sprint"><b>Sprint</b><small>'+(save.best.sprint?'Best '+clockMs(save.best.sprint):'Clear 40 lines fast')+'</small></button>'+
+      '<button class="mbtn" data-act="play" data-m="ultra"><b>Ultra</b><small>'+(save.best.ultra?'Best '+fmt(save.best.ultra):'2-minute score attack')+'</small></button>'+
+      '<button class="mbtn" data-act="play" data-m="daily"><b>Daily</b><small>'+todayLabel()+(dailyBest()?' · Best '+fmt(dailyBest()):" · today's puzzle")+'</small></button>'+
+      '<button class="mbtn" data-act="zen-setup"><b>Zen practice</b><small>Your speed · no game over</small></button>'+
+    '</div>'+
+    '<button class="secondary" data-act="sounds">🔊 Level sounds</button>'+toggles()+HOWTO+CONF;
+}
+function stagesHTML(){
+  var nextUp=0;
+  var tiles=STAGES.map(function(st){
+    var s=stageStars(st.n), open=isUnlocked(st.n), cls='tile'+(s?' done':'');
+    if(open&&!s&&!nextUp){nextUp=st.n;cls+=' next';}
+    return '<button class="'+cls+'" data-act="stage" data-n="'+st.n+'"'+(open?'':' disabled')+' aria-label="Stage '+st.n+(open?', '+st.kind+', '+s+' stars':', locked')+'">'+
+      '<b>'+st.n+'</b><span class="k">'+(open?st.kind:'Locked')+'</span><span class="st">'+'<i>★</i>'.repeat(s)+'★'.repeat(3-s)+'</span></button>';
+  }).join('');
+  return '<div class="ttl">Stages</div><div class="sub">★ <b>'+totalStars()+'</b> / '+STAGES.length*3+' · Lines, Timed and Dig goals</div>'+
+    '<div class="tiles">'+tiles+'</div><button class="secondary" data-act="menu">Back</button>';
+}
+function introHTML(n){
+  var st=STAGES[n-1], b=stageStars(n);
+  return '<div class="ttl">Stage '+n+'</div><div class="kind '+st.type+'">'+st.kind+'</div>'+
+    '<div class="goal">'+esc(st.goalText)+'</div>'+
+    rowsHTML([['★★★',st.par3Text],['★★',st.par2Text],['★','Reach the goal'],['Speed','Level '+st.speed]])+
+    '<div class="sub">'+(b?'Your best: '+starStr(b):(n===STAGES.length?'The final stage!':''))+'</div>'+
+    '<button class="primary" data-act="start-stage">Start</button><button class="secondary" data-act="stages">Back</button>';
+}
+function zenHTML(){
+  return '<div class="ttl">Zen practice</div>'+
+    '<div class="sub">No game over and no speed-up. Pick how fast the blocks fall, from frozen to instant. You can change it any time from the pause screen.</div>'+
+    speedHTML()+
+    '<button class="primary" data-act="play" data-m="zen">Start Zen practice</button><button class="secondary" data-act="menu">Back</button>';
+}
+function pauseHTML(){
+  var g=game, cm=MEMES[memeIndex(g?g.level:1)], zen=session&&session.mode==='zen';
+  return '<div class="ttl">Paused</div><div class="sub">'+esc(modeTag(session))+'</div>'+
+    '<div class="sub">Score <b>'+fmt(g?g.score:0)+'</b> · Level <b>'+(g?g.level:1)+'</b> · '+cm.emoji+' '+cm.name+'</div>'+
+    (zen?speedHTML():'')+
+    '<button class="primary" data-act="resume">Resume</button><button class="secondary" data-act="retry">Restart</button>'+
+    '<button class="secondary" data-act="sounds">🔊 Level sounds</button>'+
+    '<button class="secondary" data-act="menu">Main menu</button>'+toggles()+HOWTO+CONF;
+}
+function resultHTML(R){
+  var stars=R.stars>=0?'<div class="stars">'+[0,1,2].map(function(i){return '<span class="'+(i<R.stars?'on':'')+'">★</span>';}).join('')+'</div>':'';
+  return '<div class="ttl '+R.cls+'">'+esc(R.title)+'</div><div class="sub">'+esc(R.sub)+'</div>'+stars+
+    (R.big?'<div class="big">'+esc(R.big)+'</div>':'')+
+    (R.badge?'<div class="newbest">'+esc(R.badge)+'</div>':'')+
+    rowsHTML(R.rows)+
+    R.buttons.map(function(b){return '<button class="'+(b[2]?'primary':'secondary')+'" data-act="'+b[1]+'">'+esc(b[0])+'</button>';}).join('')+
+    (R.hint?'<div class="hint">'+esc(R.hint)+'</div>':'')+CONF;
+}
+function showOverlay(mode,data){
   var h='';
   overlayMode=mode;
-  if(mode==='menu'){
-    h='<div class="logo">STACK<span>FALL</span></div><div class="chips">'+TYPES.map(function(t){return '<i style="background:'+COLORS[t]+'"></i>';}).join('')+'</div>'+
-      '<div class="sub">Best score: <b>'+fmt(best)+'</b></div>'+
-      '<button class="primary" data-act="start">Play</button><button class="secondary" data-act="sounds">🔊 Level sounds</button>'+toggles()+HOWTO+CONF;
-  }else if(mode==='pause'){
-    var cm=MEMES[memeIndex(level)];
-    h='<div class="ttl">Paused</div><div class="sub">Score <b>'+fmt(score)+'</b> · Level <b>'+level+'</b> · '+cm.emoji+' '+cm.name+'</div>'+
-      '<button class="primary" data-act="resume">Resume</button><button class="secondary" data-act="restart">Restart</button>'+
-      '<button class="secondary" data-act="sounds">🔊 Level sounds</button>'+
-      '<button class="secondary" data-act="menu">Main menu</button>'+toggles()+HOWTO+CONF;
-  }else if(mode==='sounds'){
-    h=soundsHTML();
-  }else if(mode==='over'){
-    h='<div class="ttl">Game over</div><div class="big">'+fmt(score)+'</div>'+
-      (isNewBest?'<div class="newbest">NEW BEST</div>':'<div class="sub">Best <b>'+fmt(best)+'</b></div>')+
-      '<div class="sub">Lines <b>'+lines+'</b> · Level <b>'+level+'</b></div>'+
-      '<button class="primary" data-act="start">Play again</button><button class="secondary" data-act="menu">Main menu</button>'+CONF;
-  }
+  if(mode==='menu')h=menuHTML();
+  else if(mode==='stages')h=stagesHTML();
+  else if(mode==='intro')h=introHTML(introStage);
+  else if(mode==='pause')h=pauseHTML();
+  else if(mode==='zen')h=zenHTML();
+  else if(mode==='sounds')h=soundsHTML();
+  else if(mode==='result'){if(data)lastResult=data;h=resultHTML(lastResult);}
   sheet.innerHTML=h; overlay.classList.add('show');
   sheet.scrollTop=(mode==='sounds')?soundsScroll:0;
+  if(mode==='stages'){var nx=sheet.querySelector('.tile.next');if(nx&&nx.scrollIntoView)nx.scrollIntoView({block:'nearest'});}
 }
 function refreshSounds(msg){
   if(overlayMode!=='sounds')return;
@@ -795,25 +1959,43 @@ fileIn.addEventListener('change',function(){
 });
 function hideOverlay(){overlay.classList.remove('show');}
 overlay.addEventListener('click',function(e){
-  var b=e.target.closest?e.target.closest('[data-act]'):null; if(!b)return;
+  var b=e.target.closest?e.target.closest('[data-act]'):null; if(!b||b.disabled)return;
   var a=b.getAttribute('data-act'), bi=parseInt(b.getAttribute('data-i'),10);
   initAudio(a==='preview'||a==='upload');
-  if(a==='sounds'){soundsReturn=overlayMode;soundsScroll=0;showOverlay('sounds');return;}
-  if(a==='back'){showOverlay(soundsReturn);return;}
-  if(a==='preview'){playMeme(bi,true);return;}
-  if(a==='upload'){pendingClip=bi;fileIn.value='';fileIn.click();return;}
-  if(a==='reset'){delete customRaw[bi];delete customBuf[bi];dbDel(bi);refreshSounds('Level '+(bi+1)+' is back to '+MEMES[bi].name+'.');playMeme(bi,true);return;}
-  if(a==='start'||a==='restart')newGame();
-  else if(a==='resume')resume();
-  else if(a==='menu'){state='menu';cur=null;board=emptyBoard();queue=[];hold=null;clearRows=[];score=0;lines=0;level=1;dirtyUI=true;danger();showOverlay('menu');}
-  else if(a==='tog'){var k=b.getAttribute('data-k');settings[k]=!settings[k];store.set('settings',settings);
-    b.classList.toggle('on',settings[k]); if(k==='sound'&&settings[k])initAudio(); if(k==='haptics'&&settings[k])buzz(12);}
+  switch(a){
+    case 'sounds':soundsReturn=overlayMode;soundsScroll=0;showOverlay('sounds');return;
+    case 'back':showOverlay(soundsReturn);return;
+    case 'preview':playMeme(bi,true);return;
+    case 'upload':pendingClip=bi;fileIn.value='';fileIn.click();return;
+    case 'reset':delete customRaw[bi];delete customBuf[bi];dbDel(bi);refreshSounds('Level '+(bi+1)+' is back to '+MEMES[bi].name+'.');playMeme(bi,true);return;
+    case 'tog':{var k=b.getAttribute('data-k');settings[k]=!settings[k];store.set('settings',settings);
+      b.classList.toggle('on',settings[k]); if(k==='sound'&&settings[k])initAudio(); if(k==='haptics'&&settings[k])buzz(12);return;}
+    case 'diff':save.prefs.difficulty=b.getAttribute('data-d');persist();showOverlay('menu');return;
+    case 'play':playMode(b.getAttribute('data-m'));return;
+    case 'zen-setup':showOverlay('zen');return;
+    case 'stages':game=null;session=null;state='menu';badgeEl.textContent='Stages';danger();relWake();showOverlay('stages');return;
+    case 'stage':{var n=parseInt(b.getAttribute('data-n'),10);if(isUnlocked(n)){introStage=n;showOverlay('intro');}return;}
+    case 'start-stage':startSession({mode:'stage',stage:introStage});return;
+    case 'next-stage':introStage=Math.min(STAGES.length,(session?session.stage:introStage)+1);game=null;state='menu';showOverlay('intro');return;
+    case 'retry':retry();return;
+    case 'resume':resume();return;
+    case 'menu':toMenu();return;
+  }
+});
+
+// Zen practice speed slider (setup screen and pause screen): applies live.
+overlay.addEventListener('input',function(e){
+  if(!e.target||e.target.id!=='zenSpeed')return;
+  var v=Math.round(Number(e.target.value));
+  save.prefs.zenSpeed=v; persist();
+  var o=$('zenOut'); if(o)o.textContent=zenLabel(v);
+  if(game&&session&&session.mode==='zen'){game.setSecondsPerRow(zenSpr(v));badgeEl.textContent=modeTag(session);}
 });
 
 /* ---------- touch gestures on the play area ---------- */
 var gs=null;
 play.addEventListener('pointerdown',function(e){
-  if(state!=='playing'&&state!=='clearing')return;
+  if(state!=='playing')return;
   if(e.pointerType==='mouse'&&e.button!==0)return;
   var now=performance.now();
   gs={id:e.pointerId,x0:e.clientX,y0:e.clientY,ax:e.clientX,ay:e.clientY,t0:now,axis:null,moved:false,held:false,samples:[[now,e.clientY]]};
@@ -860,7 +2042,7 @@ function bind(id,onDown,onUp,repeat){
   function end(){if(!active)return;active=false;el.classList.remove('on');clearTimeout(t1);clearInterval(t2);if(onUp)onUp();}
   el.addEventListener('pointerdown',function(e){
     e.preventDefault(); e.stopPropagation();
-    if(state!=='playing'&&state!=='clearing')return;
+    if(state!=='playing')return;
     try{el.setPointerCapture(e.pointerId);}catch(_){}
     active=true; el.classList.add('on'); onDown();
     if(repeat){t1=setTimeout(function(){t2=setInterval(onDown,ARR);},DAS);}
@@ -869,7 +2051,7 @@ function bind(id,onDown,onUp,repeat){
 }
 bind('bL',function(){move(-1);},null,true);
 bind('bR',function(){move(1);},null,true);
-bind('bD',function(){softDrop=true;softStep();},function(){softDrop=false;});
+bind('bD',function(){softStep();setSoft(true);},function(){setSoft(false);});
 bind('bCCW',function(){rotate(-1);});
 bind('bCW',function(){rotate(1);});
 bind('bHard',function(){hardDrop();});
@@ -887,13 +2069,16 @@ fsBtn.addEventListener('click',function(){
 /* ---------- keyboard (for testing on a computer) ---------- */
 window.addEventListener('keydown',function(e){
   var k=e.key;
-  if(state==='menu'||state==='over'){if(k==='Enter'){e.preventDefault();initAudio();newGame();}return;}
+  if(state!=='playing'&&state!=='paused'){
+    if(k==='Enter'&&overlay.classList.contains('show')){var pb=sheet.querySelector('.primary');if(pb){e.preventDefault();initAudio();pb.click();}}
+    return;
+  }
   if(k==='p'||k==='P'||k==='Escape'){e.preventDefault();if(state==='paused')resume();else pause();return;}
   if(state!=='playing')return;
   switch(k){
     case 'ArrowLeft':move(-1);break;
     case 'ArrowRight':move(1);break;
-    case 'ArrowDown':softDrop=true;if(!e.repeat)softStep();break;
+    case 'ArrowDown':if(!e.repeat){softStep();setSoft(true);}break;
     case 'ArrowUp':case 'x':case 'X':if(!e.repeat)rotate(1);break;
     case 'z':case 'Z':if(!e.repeat)rotate(-1);break;
     case ' ':if(!e.repeat)hardDrop();break;
@@ -902,7 +2087,7 @@ window.addEventListener('keydown',function(e){
   }
   e.preventDefault();
 });
-window.addEventListener('keyup',function(e){if(e.key==='ArrowDown')softDrop=false;});
+window.addEventListener('keyup',function(e){if(e.key==='ArrowDown')setSoft(false);});
 
 /* ---------- system events ---------- */
 document.addEventListener('contextmenu',function(e){e.preventDefault();});
@@ -915,18 +2100,20 @@ var backGuarded=false;
 function guardBack(){if(backGuarded)return;try{history.pushState({sf:1},'');backGuarded=true;}catch(e){}}
 window.addEventListener('popstate',function(){
   backGuarded=false;
-  if(state==='playing'||state==='clearing'){pause();guardBack();}
+  if(state==='playing'){pause();guardBack();}
 });
 
 /* ---------- boot ---------- */
 layout(); showOverlay('menu'); requestAnimationFrame(frame);
 renderMemes();
 openDB(function(){dbLoad(function(){decodeAllCustom();refreshSounds();});});
-window.__sf={get state(){return state;},get score(){return score;},move:move,rotate:rotate,hardDrop:hardDrop,doHold:doHold,get cell(){return cell;},
-  memes:MEMES.map(function(m){return m.name;}),get rendered(){return memeRendered;},
-  memeData:function(i){var b=memeBufs[i];if(!b)return null;var d=b.getChannelData(0),o=[];for(var j=0;j<d.length;j+=2)o.push(Math.round(d[j]*32767));return o;},
-  setLines:function(n){lines=n;level=1+Math.floor(lines/10);}};
+// Test hook (read-only views + the same actions the touch layer uses).
+window.__sf={get state(){return state;},get game(){return game;},get cell(){return cell;},
+  move:move,rotate:rotate,hardDrop:hardDrop,doHold:doHold,softStep:softStep,
+  step:function(ms){update(ms);render(performance.now());drawStats();drawSide();}, // advance time (tests)
+  memes:MEMES.map(function(m){return m.name;}),get rendered(){return memeRendered;}};
 })();
 </script>
+
 </body>
 </html>

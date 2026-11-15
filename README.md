@@ -15,9 +15,9 @@ Or download the repo and double-click `index.html`.
 | Game | File | Best on | Highlights |
 |---|---|---|---|
 | **Prism Stack** | [`index.html`](index.html) | PC / keyboard | Marathon (Easy / Normal / Hard), 20-stage campaign with star ratings, Sprint, Ultra, Daily Challenge, Zen |
-| **Stackfall** | [`stackfall/index.html`](stackfall/index.html) | Android / touch | Swipe and tap controls, combos and back-to-back bonuses, vibration, full-screen, screen wake-lock |
+| **Stackfall** | [`stackfall/index.html`](stackfall/index.html) | Android / touch | **All the same modes as Prism Stack** (Marathon Easy/Normal/Hard, 20 Stages, Sprint, Ultra, Daily) plus **Zen practice** with a fall-speed slider from frozen to instant, swipe and tap controls, level sounds, vibration, full-screen, screen wake-lock |
 
-These are two separate codebases that share the same idea. Prism Stack is the main game, and Stackfall is the phone-first version.
+These are two separate apps with their own look, controls and screens. They share one rules engine: Stackfall contains an exact copy of Prism Stack's `game-core` script, so every mode plays by identical rules (the Daily Challenge is even the same puzzle on both). The tests fail if the two copies ever drift apart. To change the rules, edit `index.html` first, then copy its `game-core` script into `stackfall/index.html`.
 
 ## Prism Stack features
 - 10 × 20 field with a hidden 20-row buffer, 7-bag randomizer, 5-piece next queue, ghost piece and hold
@@ -67,7 +67,8 @@ The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/desi
 - [x] Phase 0–1: foundation and playable core
 - [x] Modes: difficulties, Stages, Sprint, Ultra, Daily, Zen
 - [x] Phase 2: T-spins, back-to-back, combos, perfect clears
-- [ ] Phase 3: touch controls in Prism Stack (merging in Stackfall's touch layer)
+- [x] Phone play: Stackfall has every Prism Stack mode with touch controls
+- [ ] Phase 3: touch controls inside Prism Stack itself (on hold)
 - [ ] Phase 4: sound, settings, key remapping, top-10 scores
 - [ ] Phase 5: animations and polish
 - [ ] Phase 6: final hardening and privacy audit

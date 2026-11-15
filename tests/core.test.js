@@ -919,5 +919,111 @@ test('fuzz: scores stay whole numbers and B2B/combo state stays valid', () => {
   }
 });
 
+console.log('\nTouch moves (used by Stackfall)');
+
+test('nudge moves exactly one cell, no auto-repeat, and stops at walls', () => {
+  const g = newGame(); clearBoard(g); g.spawn('O');
+  const x0 = g.piece.x;
+  assert(g.nudge(-1)); assert.strictEqual(g.piece.x, x0 - 1);
+  tickFor(g, 400, CONFIG.TICK_MS);
+  assert.strictEqual(g.piece.x, x0 - 1);
+  for (let i = 0; i < 20; i++) g.nudge(1);
+  assert.strictEqual(Math.max(...cells(g).map(c => c[0])), 9);
+  assert(!g.nudge(1));
+});
+
+test('softStep moves one row and scores 1; refuses on the floor', () => {
+  const g = newGame(); clearBoard(g); g.score = 0;
+  g.spawn('T');
+  const y0 = g.piece.y;
+  assert(g.softStep()); assert.strictEqual(g.piece.y, y0 + 1); assert.strictEqual(g.score, 1);
+  place(g, 'T', 0, 3, BOTTOM - 1);
+  assert(!g.softStep()); assert.strictEqual(g.score, 1);
+});
+
+test('nudge/softStep do nothing while paused or after game over', () => {
+  const g = newGame(); clearBoard(g); g.spawn('T');
+  const p = JSON.stringify(g.piece);
+  g.paused = true;
+  assert(!g.nudge(1)); assert(!g.softStep());
+  g.paused = false; g.state = 'over';
+  assert(!g.nudge(1)); assert(!g.softStep());
+  assert.strictEqual(JSON.stringify(g.piece), p);
+});
+
+test('a nudge on the ground resets lock delay, like a key move', () => {
+  const g = newGame(); clearBoard(g);
+  place(g, 'T', 0, 3, BOTTOM - 1);
+  tickFor(g, 400);
+  assert(g.nudge(1));
+  tickFor(g, 400);
+  assert.strictEqual(g.piecesPlaced, 0, 'reset kept it alive');
+  tickFor(g, 150);
+  assert.strictEqual(g.piecesPlaced, 1);
+});
+
+console.log('\nZen practice speed');
+
+test('Zen practice: a fixed speed (e.g. 3 s/row) replaces the level curve', () => {
+  const g = C.createGame({ mode: 'zen', secondsPerRow: 3 }); clearBoard(g); g.spawn('T');
+  assert.strictEqual(g.fallSecondsPerRow(), 3);
+  const y0 = g.piece.y;
+  tickFor(g, 2900, CONFIG.TICK_MS); assert.strictEqual(g.piece.y, y0);
+  tickFor(g, 200, CONFIG.TICK_MS);  assert.strictEqual(g.piece.y, y0 + 1);
+});
+
+test('Zen practice: frozen (Infinity) never falls, but soft drop still works', () => {
+  const g = C.createGame({ mode: 'zen', secondsPerRow: Infinity }); clearBoard(g); g.spawn('T');
+  const y0 = g.piece.y;
+  tickFor(g, 10000, CONFIG.TICK_MS); assert.strictEqual(g.piece.y, y0);
+  g.press('soft'); tickFor(g, 200, CONFIG.TICK_MS);
+  assert(g.piece.y > y0 + 2, 'soft drop moves while frozen');
+});
+
+test('Zen practice: speed can change mid-game; the fastest setting drops instantly', () => {
+  const g = C.createGame({ mode: 'zen' }); clearBoard(g); g.spawn('T');
+  assert.strictEqual(g.fallSecondsPerRow(), 1);                 // default: level 1
+  g.setSecondsPerRow(0.0004);
+  tickFor(g, CONFIG.TICK_MS, CONFIG.TICK_MS);
+  assert.strictEqual(g.piece.y, g.ghostY(), 'one frame lands it');
+  g.setSecondsPerRow(0); assert.strictEqual(g.fallSecondsPerRow(), 1);
+});
+
+test('other modes ignore the Zen speed setting', () => {
+  const g = C.createGame({ mode: 'marathon', difficulty: 'hard', secondsPerRow: 9 });
+  assert.strictEqual(g.fallSecondsPerRow(), 1);
+});
+
+console.log('\nStackfall (Android edition)');
+
+const sfHtml = fs.readFileSync(path.join(__dirname, '..', 'stackfall', 'index.html'), 'utf8');
+const coreOf = h => { const m = h.match(/<script id="game-core">([\s\S]*?)<\/script>/); return m && m[1]; };
+
+test('Stackfall uses an identical copy of the Prism Stack engine (so every test above covers it)', () => {
+  const a = coreOf(sfHtml), b = coreOf(html);
+  assert(a, 'Stackfall has no game-core script');
+  assert(a === b, 'Stackfall engine differs from Prism Stack: copy index.html\'s game-core into stackfall/index.html');
+});
+
+test('both pages\' browser scripts parse (syntax check)', () => {
+  for (const [name, h] of [['Prism Stack', html], ['Stackfall', sfHtml]]) {
+    const scripts = [...h.matchAll(/<script(?![^>]*id="game-core")[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    assert(scripts.length >= 1, name);
+    for (const s of scripts) new vm.Script(s, { filename: name });
+  }
+});
+
+test('Stackfall menu offers every Prism Stack mode', () => {
+  for (const m of ['marathon', 'sprint', 'ultra', 'daily', 'zen']) assert(sfHtml.includes(`data-m="${m}"`), m);
+  assert(sfHtml.includes('data-act="stages"') && sfHtml.includes("data-act=\"diff\""));
+  for (const d of Object.keys(C.DIFFICULTY)) assert(sfHtml.includes(`'${d}'`), d);
+});
+
+test('Stackfall makes no network requests (no external URLs in code)', () => {
+  const code = sfHtml.replace(/<!--[\s\S]*?-->/g, '');
+  assert(!/(src|href)\s*=\s*["']https?:/i.test(code), 'external src/href');
+  assert(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon/.test(code), 'network API used');
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

@@ -734,6 +734,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     timeLimitMs: 0,       // 0 = no time limit
     onTimeUp: 'lose',     // 'lose' (stages) or 'finish' (Ultra, Daily)
     noTopOut: false,      // Zen: wipe the board instead of game over
+    secondsPerRow: 0,     // > 0: fixed fall speed (Zen practice); Infinity = blocks don't fall
     garbage: null,        // junk rows (top to bottom) placed at the bottom
     config: null,         // CONFIG overrides, e.g. { LOCK_DELAY_MS: 1000 }
   });
@@ -810,6 +811,16 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     }
 
     // ----- Speed -------------------------------------------------------
+    // Seconds for a piece to fall one row right now.
+    fallSecondsPerRow() {
+      const fixed = this.rules.secondsPerRow;
+      return fixed > 0 ? fixed : secondsPerRow(this.gravityLevel());
+    }
+    // Zen practice: change the fall speed at any time (Infinity = frozen).
+    setSecondsPerRow(s) {
+      this.rules.secondsPerRow = s > 0 ? s : 0;
+      this.gravityAcc = 0;
+    }
     gravityLevel() {
       if (this.rules.speedLevel > 0) return this.rules.speedLevel;
       return 1 + (this.level - 1) * this.rules.gravityScale;
@@ -1132,6 +1143,21 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       return true;
     }
 
+    // ----- Touch gestures (used by Stackfall) ---------------------------
+    // A finger drag moves exactly one cell per step (no DAS), and a slow
+    // drag down moves one row per step, scoring like soft drop (1 per row).
+    nudge(dir) {
+      if (this.state !== 'playing' || this.paused) return false;
+      return this.tryMove(dir, 0);
+    }
+    softStep() {
+      if (this.state !== 'playing' || this.paused) return false;
+      if (!this.tryMove(0, 1)) return false;
+      this.score += 1;
+      this.gravityAcc = 0;
+      return true;
+    }
+
     // ----- Game over / win / finish -------------------------------------
     endGame(reason, outcome) {
       this.state = 'over';
@@ -1232,9 +1258,10 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       if (!this.piece) return;
 
       // Gravity (accumulates fractional rows; soft drop multiplies the rate).
-      const base = 1 / (secondsPerRow(this.gravityLevel()) * 1000);
+      const base = 1 / (this.fallSecondsPerRow() * 1000);
       const soft = this.input.soft;
-      const rate = soft ? base * this.cfg.SOFT_DROP_FACTOR : base;
+      // Soft drop always works, even when blocks are frozen (at least level-1 soft speed).
+      const rate = soft ? Math.max(base, 1 / 1000) * this.cfg.SOFT_DROP_FACTOR : base;
       this.gravityAcc += dt * rate;
       while (this.gravityAcc >= 1) {
         if (this.tryMove(0, 1)) {
@@ -1402,7 +1429,8 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       }
       case 'sprint': return { seed: null, rules: { id: 'sprint', gravityScale: 0, lineGoal: 40 } };
       case 'ultra':  return { seed: null, rules: { id: 'ultra', gravityScale: 0.5, timeLimitMs: 120000, onTimeUp: 'finish' } };
-      case 'zen':    return { seed: null, rules: { id: 'zen', gravityScale: 0, noTopOut: true } };
+      case 'zen':    return { seed: null, rules: { id: 'zen', gravityScale: 0, noTopOut: true,
+                                                   secondsPerRow: s.secondsPerRow > 0 ? s.secondsPerRow : 0 } };
       case 'daily': {
         const seed = dailySeed(s.date);
         return { seed, rules: {
