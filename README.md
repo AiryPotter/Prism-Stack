@@ -24,6 +24,7 @@ These are two separate codebases that share the same idea. Prism Stack is the ma
 - Full SRS rotation with wall kicks (CW, CCW and 180°)
 - Tunable DAS (170 ms) and ARR (50 ms), soft drop and hard drop, 500 ms lock delay with 15 resets
 - Guideline gravity curve, level up every 10 lines
+- **Modern scoring:** T-spins (full and mini, 3-corner rule), back-to-back ×1.5, combos and perfect clears, with on-screen callouts like "T-SPIN DOUBLE!", "BACK-TO-BACK" and "COMBO ×3"
 - **Modes:** Marathon (3 difficulties), **Stages** (20 levels: Lines, Timed and Dig goals, 1–3 stars), **Sprint** (40 lines), **Ultra** (2-minute score attack), **Daily Challenge** (same puzzle for everyone each day, fully offline) and **Zen** (no game over)
 
 ### Controls (keyboard)
@@ -58,14 +59,14 @@ No build step and no dependencies. Edit the HTML file and refresh the browser.
 ```bash
 node tests/core.test.js
 ```
-They cover rotation and kicks, the bag, lock delay, gravity, scoring, 300 random fuzz games, and a bot that proves all 20 stages are winnable.
+They cover rotation and kicks, the bag, lock delay, gravity, every row of the scoring table (including T-spins, back-to-back, combos and perfect clears), random fuzz games, and a bot that proves all 20 stages are winnable.
 
 The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/design-spec.md).
 
 ## Roadmap
 - [x] Phase 0–1: foundation and playable core
 - [x] Modes: difficulties, Stages, Sprint, Ultra, Daily, Zen
-- [ ] Phase 2: T-spins, back-to-back, combos, perfect clears
+- [x] Phase 2: T-spins, back-to-back, combos, perfect clears
 - [ ] Phase 3: touch controls in Prism Stack (merging in Stackfall's touch layer)
 - [ ] Phase 4: sound, settings, key remapping, top-10 scores
 - [ ] Phase 5: animations and polish

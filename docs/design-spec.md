@@ -49,7 +49,7 @@ Build a complete falling-block puzzle game with modern guideline-style mechanics
 | Action | Points |
 |---|---|
 | Single / Double / Triple / Quad | 100 / 300 / 500 / 800 |
-| T-spin mini (no lines) / mini single | 100 / 200 |
+| T-spin mini (no lines) / mini single / mini double | 100 / 200 / 400 |
 | T-spin (no lines) / single / double / triple | 400 / 800 / 1200 / 1600 |
 | Back-to-back (consecutive Quads or T-spin clears) | × 1.5 on that clear |
 | Combo | 50 × combo count |

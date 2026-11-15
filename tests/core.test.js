@@ -196,9 +196,13 @@ test('gravity: level 1 piece falls 1 row per second', () => {
   assert.strictEqual(g.piece.y, y0 + 1);
 });
 
-function clearWithI(lines) {
+// A lone block high on the right stops a Quad here from also being a
+// perfect clear (Phase 2), so these tests measure plain line clears.
+const JUNK = [9, BOTTOM - 10];
+function clearWithI(lines, junk = true) {
   const g = newGame(); clearBoard(g); g.score = 0;
   for (let i = 0; i < lines; i++) fillRow(g, BOTTOM - i, [0]);
+  if (junk) g.board[JUNK[1]][JUNK[0]] = 'X';
   place(g, 'I', 1, -2, 20);                // vertical I down column 0
   g.hardDrop();
   return g;
@@ -210,10 +214,10 @@ for (const n of [1, 2, 3, 4]) {
     assert.strictEqual(g.lines, n);
     tickFor(g, CONFIG.LINE_CLEAR_DELAY_MS + 5);
     assert.strictEqual(g.state, 'playing');
-    // Only the leftover I cells (4 - n) remain on the board.
+    // Only the leftover I cells (4 - n) and the junk block remain.
     let count = 0;
     for (let y = 0; y < TOTAL_ROWS; y++) for (let x = 0; x < 10; x++) if (g.board[y][x]) count++;
-    assert.strictEqual(count, 4 - n);
+    assert.strictEqual(count, 4 - n + 1);
   });
 }
 
@@ -221,6 +225,7 @@ test('line-clear points are exact (separate from drop points)', () => {
   for (const n of [1, 2, 3, 4]) {
     const g = newGame(); clearBoard(g); g.score = 0;
     for (let i = 0; i < n; i++) fillRow(g, BOTTOM - i, [0]);
+    g.board[JUNK[1]][JUNK[0]] = 'X';       // not a perfect clear
     place(g, 'I', 1, -2, BOTTOM - 3);      // already resting: drop distance 0
     g.hardDrop();
     assert.strictEqual(g.score, C.LINE_CLEAR_POINTS[n] * 1);
@@ -710,6 +715,207 @@ test('bot: Sprint, Ultra, Daily and Zen all run to a proper end', () => {
     const g = playBot(C.createGame({ mode, date: '2026-11-04' }), 60);
     if (g.state !== 'over') { g.elapsedMs = g.rules.timeLimitMs - 100; tickFor(g, 200, 50); }
     assert.strictEqual(g.outcome, 'finish', mode);
+  }
+});
+
+console.log('\nPhase 2 — modern scoring');
+
+// T-slot at the bottom: rows B and B-1 are full except the slot, and an
+// overhang at (3, B-2) makes the third corner. A T pointing down
+// (rot 2, origin x=3, y=B-2) fills (3..5, B-1) and (4, B).
+//   B-2: . . . X . . . . . .
+//   B-1: X X X . . . X X X X     (lastRowGap leaves one more gap if asked)
+//   B  : X X X X . X X X X X
+function tSlot(g, { rows = 2, lastRowGap = null } = {}) {
+  clearBoard(g); g.score = 0;
+  fillRow(g, BOTTOM, [4]);
+  fillRow(g, BOTTOM - 1, lastRowGap === null ? [3, 4, 5] : [3, 4, 5, lastRowGap]);
+  if (rows < 2) fillRow(g, BOTTOM - 1, [3, 4, 5, 9]);   // B-1 can't clear
+  g.board[BOTTOM - 2][3] = 'X';
+  g.board[JUNK[1]][JUNK[0]] = 'X';                      // not a perfect clear
+}
+function lastClear(g) { return g.drainEvents().filter(e => e.type === 'clear' || e.type === 'tspin').pop(); }
+
+test('scoring table: every row of spec section 8 (level 1)', () => {
+  eq([1, 2, 3, 4].map(n => C.basePoints(n, null)), [100, 300, 500, 800]);
+  eq([0, 1].map(n => C.basePoints(n, 'mini')), [100, 200]);
+  eq([0, 1, 2, 3].map(n => C.basePoints(n, 'full')), [400, 800, 1200, 1600]);
+  assert.strictEqual(C.B2B_MULTIPLIER, 1.5);
+  assert.strictEqual(C.COMBO_POINTS, 50);
+  eq(C.PERFECT_CLEAR_POINTS.slice(1), [800, 1200, 1800, 2000]);
+  assert.strictEqual(C.PERFECT_CLEAR_B2B_QUAD, 3200);
+});
+
+test('difficult clears: Quads and line-clearing T-spins only', () => {
+  assert(C.isDifficult(4, null));
+  assert(C.isDifficult(1, 'mini') && C.isDifficult(1, 'full'));
+  assert(!C.isDifficult(3, null) && !C.isDifficult(0, 'full'));
+});
+
+test('T-spin double through a real SRS rotation scores 1200', () => {
+  const g = newGame(); tSlot(g);
+  place(g, 'T', 3, 3, BOTTOM - 2);         // pointing left, already in the slot
+  assert(g.tryRotate(-1), 'rotate into the slot');
+  assert.strictEqual(g.piece.rot, 2);
+  g.hardDrop();
+  const e = lastClear(g);
+  assert.strictEqual(e.lines, 2);
+  assert.strictEqual(e.tspin, 'full');
+  assert.strictEqual(e.name, 'T-SPIN DOUBLE');
+  assert.strictEqual(g.score, 1200);
+});
+
+test('same slot filled by a move (no rotation) is a plain double', () => {
+  const g = newGame(); tSlot(g);
+  place(g, 'T', 2, 3, BOTTOM - 2);         // lastWasRotate = false
+  g.hardDrop();
+  const e = lastClear(g);
+  assert.strictEqual(e.tspin, null);
+  assert.strictEqual(g.score, 300);
+});
+
+test('T-spin single (full) scores 800 × level', () => {
+  const g = newGame(); tSlot(g, { rows: 1 }); g.level = 3;
+  place(g, 'T', 2, 3, BOTTOM - 2); g.piece.lastWasRotate = true; g.piece.lastKick = 0;
+  g.hardDrop();
+  const e = lastClear(g);
+  assert.strictEqual(e.lines, 1); assert.strictEqual(e.tspin, 'full');
+  assert.strictEqual(g.score, 800 * 3);
+});
+
+test('T-spin mini (no lines) = 100; last SRS kick upgrades it to a full 400', () => {
+  for (const [kick, want, kind] of [[0, 100, 'mini'], [4, 400, 'full']]) {
+    const g = newGame(); clearBoard(g); g.score = 0;
+    g.board[BOTTOM - 1][3] = 'X';          // TL corner; floor makes BL + BR
+    place(g, 'T', 0, 3, BOTTOM - 1); g.piece.lastWasRotate = true; g.piece.lastKick = kick;
+    g.hardDrop();
+    const e = lastClear(g);
+    assert.strictEqual(e.type, 'tspin'); assert.strictEqual(e.tspin, kind);
+    assert.strictEqual(g.score, want);
+  }
+});
+
+test('a 180° rotation\'s last kick does not upgrade a mini', () => {
+  const g = newGame(); clearBoard(g);
+  g.board[BOTTOM - 1][3] = 'X';
+  place(g, 'T', 0, 3, BOTTOM - 1); g.piece.lastWasRotate = true; g.piece.lastKick = 4; g.piece.lastRot180 = true;
+  assert.strictEqual(g.tSpinType(g.piece), 'mini');
+});
+
+test('T-spin mini single scores 200', () => {
+  const g = newGame(); clearBoard(g); g.score = 0;
+  fillRow(g, BOTTOM, [3, 4, 5]);
+  g.board[BOTTOM - 1][3] = 'X';
+  g.board[JUNK[1]][JUNK[0]] = 'X';
+  place(g, 'T', 0, 3, BOTTOM - 1); g.piece.lastWasRotate = true; g.piece.lastKick = 0;
+  g.hardDrop();
+  const e = lastClear(g);
+  assert.strictEqual(e.tspin, 'mini'); assert.strictEqual(e.lines, 1);
+  assert.strictEqual(g.score, 200);
+});
+
+test('only T pieces T-spin; two blocked corners is not enough', () => {
+  const g = newGame(); clearBoard(g);
+  place(g, 'T', 0, 3, BOTTOM - 1); g.piece.lastWasRotate = true;   // floor = 2 corners
+  assert.strictEqual(g.tSpinType(g.piece), null);
+  g.board[BOTTOM - 1][3] = 'X';
+  place(g, 'L', 0, 3, BOTTOM - 1); g.piece.lastWasRotate = true;
+  assert.strictEqual(g.tSpinType(g.piece), null);
+});
+
+test('back-to-back Quad scores 800 × 1.5 = 1200', () => {
+  const g = newGame(); clearBoard(g); g.score = 0;
+  g.b2b = true;                            // previous clear was difficult
+  for (let i = 0; i < 4; i++) fillRow(g, BOTTOM - i, [0]);
+  g.board[JUNK[1]][JUNK[0]] = 'X';
+  place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+  const e = lastClear(g);
+  assert(e.b2b); assert.strictEqual(g.score, 1200);
+  assert.strictEqual(g.stats.b2bs, 1);
+});
+
+test('first Quad is not back-to-back but starts the chain', () => {
+  const g = clearWithI(4);
+  assert.strictEqual(lastClear(g).b2b, false);
+  assert.strictEqual(g.b2b, true);
+});
+
+test('a plain single breaks back-to-back; a no-line T-spin and a no-line lock do not', () => {
+  const g = newGame(); clearBoard(g); g.b2b = true;
+  fillRow(g, BOTTOM, [0]); g.board[JUNK[1]][JUNK[0]] = 'X';
+  place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+  assert.strictEqual(lastClear(g).b2b, false);
+  assert.strictEqual(g.b2b, false, 'single ends the chain');
+  const h = newGame(); clearBoard(h); h.b2b = true;
+  h.board[BOTTOM - 1][3] = 'X';
+  place(h, 'T', 0, 3, BOTTOM - 1); h.piece.lastWasRotate = true; h.hardDrop();
+  assert.strictEqual(h.b2b, true, 'T-spin with no lines keeps B2B');
+  place(h, 'O', 0, 7, BOTTOM - 1); h.hardDrop();
+  assert.strictEqual(h.b2b, true, 'ordinary placement keeps B2B');
+});
+
+test('combo: +50 × combo × level on consecutive clears; a miss resets it', () => {
+  const g = newGame(); clearBoard(g); g.score = 0; g.level = 2;
+  g.board[JUNK[1]][JUNK[0]] = 'X';
+  const single = () => {                    // one single clear with a vertical I
+    fillRow(g, BOTTOM, [0]);
+    place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+    tickFor(g, CONFIG.LINE_CLEAR_DELAY_MS + 5);
+    for (let y = 0; y < TOTAL_ROWS; y++) g.board[y][0] = null;   // tidy column 0
+    g.board[JUNK[1]][JUNK[0]] = 'X';
+    return lastClear(g);
+  };
+  const before = () => g.score;
+  let s = before(); let e = single(); assert.strictEqual(e.combo, 0); assert.strictEqual(g.score - s, 200);
+  s = before(); e = single(); assert.strictEqual(e.combo, 1); assert.strictEqual(g.score - s, 200 + 100);
+  s = before(); e = single(); assert.strictEqual(e.combo, 2); assert.strictEqual(g.score - s, 200 + 200);
+  assert.strictEqual(e.name, 'SINGLE');
+  assert.strictEqual(g.stats.maxCombo, 2);
+  place(g, 'O', 0, 7, BOTTOM - 1); g.hardDrop();
+  assert.strictEqual(g.combo, -1);
+});
+
+test('perfect clear single: 100 + 800', () => {
+  const g = newGame(); clearBoard(g); g.score = 0;
+  fillRow(g, BOTTOM, [0, 1, 2, 3]);
+  place(g, 'I', 0, 0, BOTTOM - 1); g.hardDrop();
+  const e = lastClear(g);
+  assert(e.perfect); assert.strictEqual(g.score, 900);
+  assert.strictEqual(g.stats.perfectClears, 1);
+});
+
+test('perfect clear Quad: 800 + 2000; back-to-back: 1200 + 3200', () => {
+  const a = clearWithI(4, false);           // (score also includes hard-drop points)
+  const ea = lastClear(a);
+  assert(ea.perfect); assert.strictEqual(ea.points, 2800);
+  const g = newGame(); clearBoard(g); g.score = 0; g.b2b = true;
+  for (let i = 0; i < 4; i++) fillRow(g, BOTTOM - i, [0]);
+  place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+  assert.strictEqual(g.score, 1200 + 3200);
+});
+
+test('perfect clear is not awarded when other blocks remain', () => {
+  const g = clearWithI(2);
+  assert.strictEqual(lastClear(g).perfect, false);
+});
+
+test('clear names', () => {
+  assert.strictEqual(C.clearName(3, 'full'), 'T-SPIN TRIPLE');
+  assert.strictEqual(C.clearName(0, 'mini'), 'MINI T-SPIN');
+  assert.strictEqual(C.clearName(4, null), 'QUAD');
+});
+
+test('fuzz: scores stay whole numbers and B2B/combo state stays valid', () => {
+  for (let seed = 1; seed <= 60; seed++) {
+    const g = newGame(seed); const r = C.mulberry32(seed * 31);
+    const acts = ['left', 'right', 'cw', 'ccw', 'r180', 'hard', 'hold'];
+    for (let i = 0; i < 400 && g.state !== 'over'; i++) {
+      g.press(acts[Math.floor(r() * acts.length)]);
+      tickFor(g, 30, CONFIG.TICK_MS);
+      assert(Number.isInteger(g.score), 'score ' + g.score);
+      assert(g.combo >= -1);
+      assert.strictEqual(typeof g.b2b, 'boolean');
+    }
   }
 });
 

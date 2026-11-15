@@ -2,7 +2,7 @@
 <!--
   Prism Stack — free, open-source (MIT), offline falling-block puzzle game
   https://github.com/AiryPotter/Prism-Stack
-  Build: Phase 0–1 + Modes update (difficulties, Stages, Sprint, Ultra, Daily, Zen)
+  Build: Phase 0–2 + Modes update (modern scoring: T-spins, back-to-back, combos, perfect clears)
   Privacy: makes no network requests. The CSP below blocks all external loading.
 -->
 <html lang="en">
@@ -167,6 +167,9 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 #popup.big { font-size: clamp(20px, calc(var(--cell) * 1.15), 40px); color: var(--accent-2); text-shadow: 0 0 22px rgba(46, 230, 255, 0.9); }
 #popup.gem { color: #ffb3ec; text-shadow: 0 0 20px rgba(255, 95, 210, 0.95); }
 #popup.win { font-size: clamp(22px, calc(var(--cell) * 1.25), 44px); color: var(--gold); text-shadow: 0 0 24px rgba(255, 216, 74, 0.9); }
+#popup.tspin { color: #d9b8ff; text-shadow: 0 0 22px rgba(184, 107, 255, 0.95), 0 2px 0 rgba(0, 0, 0, 0.4); }
+#popup.pc { font-size: clamp(20px, calc(var(--cell) * 1.1), 38px); color: var(--gold); text-shadow: 0 0 24px rgba(255, 216, 74, 0.9); }
+#popup .sub { display: block; margin-top: 0.25em; font-size: 0.55em; letter-spacing: 0.14em; color: #fff; text-shadow: 0 0 12px rgba(46, 230, 255, 0.8); }
 #popup.pop { animation: popup 1.15s ease-out forwards; }
 @keyframes popup {
   0% { opacity: 0; transform: translateY(10px) scale(0.8); }
@@ -671,11 +674,41 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   }
 
   // ===================================================================
-  // SCORING (line clears + drops. T-spins/B2B/combos arrive in Phase 2.)
+  // SCORING (guideline values; everything except drops is × level)
+  //   Line clears, T-spins (full + mini), back-to-back ×1.5,
+  //   combos (50 × combo) and perfect clears.
   // ===================================================================
   const LINE_CLEAR_POINTS = [0, 100, 300, 500, 800];
+  const TSPIN_POINTS      = [400, 800, 1200, 1600];   // by lines cleared (0–3)
+  const TSPIN_MINI_POINTS = [100, 200, 400];          // by lines cleared (0–2)
+  const PERFECT_CLEAR_POINTS = [0, 800, 1200, 1800, 2000];
+  const PERFECT_CLEAR_B2B_QUAD = 3200;
+  const COMBO_POINTS = 50;
+  const B2B_MULTIPLIER = 1.5;
+
   function scoreForLineClear(lines, level) {
     return (LINE_CLEAR_POINTS[lines] || 0) * level;
+  }
+  // Base points for one lock, before level, back-to-back, combo and perfect
+  // clear. tspin: null | 'mini' | 'full'.
+  function basePoints(lines, tspin) {
+    if (tspin === 'full') return TSPIN_POINTS[lines] || 0;
+    if (tspin === 'mini') return TSPIN_MINI_POINTS[lines] || 0;
+    return LINE_CLEAR_POINTS[lines] || 0;
+  }
+  // "Difficult" clears keep a back-to-back chain going: a Quad, or any
+  // T-spin (full or mini) that clears at least one line.
+  function isDifficult(lines, tspin) {
+    return lines >= 4 || (!!tspin && lines > 0);
+  }
+  // Display name for a clear, e.g. "T-SPIN DOUBLE", "MINI T-SPIN", "QUAD".
+  const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD'];
+  function clearName(lines, tspin) {
+    if (tspin) {
+      const t = tspin === 'mini' ? 'MINI T-SPIN' : 'T-SPIN';
+      return lines ? t + ' ' + CLEAR_NAMES[lines] : t;
+    }
+    return CLEAR_NAMES[lines] || '';
   }
 
   // ===================================================================
@@ -738,6 +771,9 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       this.lines = 0;
       this.level = this.startLevel;
       this.piecesPlaced = 0;
+      this.b2b = false;        // last line clear was "difficult"
+      this.combo = -1;         // consecutive line-clearing locks, minus one
+      this.stats = { tspins: 0, b2bs: 0, maxCombo: 0, perfectClears: 0, quads: 0 };
       this.elapsedMs = 0;
       this.zenWipes = 0;
 
@@ -824,8 +860,9 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         x: this.cfg.SPAWN_X,
         y: this.cfg.HIDDEN_ROWS - 2,   // just above the visible field
         lowestY: 0,
-        lastWasRotate: false,           // for T-spin detection (Phase 2)
+        lastWasRotate: false,           // for T-spin detection
         lastKick: -1,
+        lastRot180: false,
       };
       this.piece = p;
       if (this.collides(type, 0, p.x, p.y)) {
@@ -908,6 +945,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
           p.x = nx; p.y = ny; p.rot = to;
           p.lastWasRotate = true;
           p.lastKick = i;
+          p.lastRot180 = dir === 2;
           this.noteDescent();
           this.onManipulated(wasOnGround);
           this.events.push({ type: 'rotate', kick: i });
@@ -929,10 +967,33 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       this.lockPiece();
     }
 
+    // ----- T-spin detection ---------------------------------------------
+    // 3-corner rule: the last successful action was a rotation and at least
+    // 3 of the 4 corners around the T's centre are blocked (walls and floor
+    // count). Full if both "front" corners (the side the T points to) are
+    // blocked; otherwise mini, unless the rotation used the last SRS kick
+    // (a 90° turn's kick #4), which upgrades it to full.
+    tSpinType(p) {
+      if (!p || p.type !== 'T' || !p.lastWasRotate) return null;
+      const blocked = (dx, dy) => {
+        const x = p.x + dx, y = p.y + dy;
+        return x < 0 || x >= this.cfg.COLS || y < 0 || y >= TOTAL_ROWS || this.board[y][x] !== null;
+      };
+      // Corners of the 3×3 box, centre at (1,1): TL, TR, BR, BL.
+      const c = [blocked(0, 0), blocked(2, 0), blocked(2, 2), blocked(0, 2)];
+      if (c.filter(Boolean).length < 3) return null;
+      // Front corners by rotation: 0 = up (TL,TR), R (TR,BR), 2 = down (BR,BL), L (BL,TL).
+      const front = [[0, 1], [1, 2], [2, 3], [3, 0]][p.rot];
+      if (c[front[0]] && c[front[1]]) return 'full';
+      if (p.lastKick === 4 && !p.lastRot180) return 'full';
+      return 'mini';
+    }
+
     // ----- Locking & line clearing ------------------------------------
     lockPiece() {
       const p = this.piece;
       if (!p) return;
+      const tspin = this.tSpinType(p);   // check before the piece joins the board
       const cells = this.cellsOf(p);
       let entirelyHidden = true;
       for (const [x, y] of cells) {
@@ -955,20 +1016,59 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         if (this.board[y].every(c => c !== null)) full.push(y);
       }
       if (full.length === 0) {
+        // No lines: the combo ends. A T-spin with no lines still scores,
+        // but neither builds nor breaks back-to-back.
+        this.combo = -1;
+        if (tspin) {
+          const points = basePoints(0, tspin) * this.level;
+          this.score += points;
+          this.stats.tspins++;
+          this.events.push({ type: 'tspin', tspin, points, name: clearName(0, tspin) });
+        }
         this.spawn(this.takeNext());
         return;
       }
 
       const n = full.length;
-      const points = scoreForLineClear(n, this.level);
+      const level = this.level;              // score uses the level at clear time
+      const difficult = isDifficult(n, tspin);
+      const b2b = difficult && this.b2b;     // continues an earlier difficult clear
+      this.b2b = difficult;
+      this.combo++;
+
+      let points = basePoints(n, tspin) * level;
+      if (b2b) points *= B2B_MULTIPLIER;
+      if (this.combo > 0) points += COMBO_POINTS * this.combo * level;
+
+      // Perfect clear: nothing left on the board once the full rows go.
+      const fullSet = new Set(full);
+      let perfect = true;
+      for (let y = 0; y < TOTAL_ROWS && perfect; y++) {
+        if (fullSet.has(y)) continue;
+        if (this.board[y].some(c => c !== null)) perfect = false;
+      }
+      if (perfect) {
+        points += (n === 4 && b2b ? PERFECT_CLEAR_B2B_QUAD : PERFECT_CLEAR_POINTS[n]) * level;
+        this.stats.perfectClears++;
+      }
+      points = Math.round(points);
       this.score += points;
+
+      if (tspin) this.stats.tspins++;
+      if (b2b) this.stats.b2bs++;
+      if (n === 4) this.stats.quads++;
+      if (this.combo > this.stats.maxCombo) this.stats.maxCombo = this.combo;
+
       this.lines += n;
       const newLevel = this.startLevel + Math.floor(this.lines / this.cfg.LINES_PER_LEVEL);
       if (newLevel > this.level) {
         this.level = newLevel;
         this.events.push({ type: 'levelup', level: newLevel });
       }
-      this.events.push({ type: 'clear', lines: n, rows: full, points });
+      this.events.push({
+        type: 'clear', lines: n, rows: full, points,
+        tspin, b2b, combo: this.combo, perfect, name: clearName(n, tspin),
+      });
 
       this.clearingRows = full;
       this.clearTimer = 0;
@@ -1328,6 +1428,8 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     CONFIG, TOTAL_ROWS, TYPES, SHAPES,
     KICKS_JLSTZ, KICKS_I, KICKS_180, getKicks,
     Bag, mulberry32, secondsPerRow, scoreForLineClear, LINE_CLEAR_POINTS,
+    TSPIN_POINTS, TSPIN_MINI_POINTS, PERFECT_CLEAR_POINTS, PERFECT_CLEAR_B2B_QUAD,
+    COMBO_POINTS, B2B_MULTIPLIER, basePoints, isDifficult, clearName,
     createBoard, Game, DEFAULT_RULES,
     DIFFICULTY, STAGES, STAR_TUNING, makeGarbage, starsFor, dailySeed, buildMode, createGame, fmtClock,
   };
@@ -1743,8 +1845,15 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     void node.offsetWidth;   // restart the animation
     node.classList.add(cls);
   }
-  function popup(text, cls) {
+  // subs: optional smaller lines under the main text ("BACK-TO-BACK", "COMBO ×3").
+  function popup(text, cls, subs) {
     popupEl.textContent = text;
+    for (const s of subs || []) {
+      const span = document.createElement('span');
+      span.className = 'sub';
+      span.textContent = s;
+      popupEl.appendChild(span);
+    }
     popupEl.className = cls || '';
     void popupEl.offsetWidth;
     popupEl.classList.add('pop');
@@ -1798,9 +1907,17 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     for (const e of game.drainEvents()) {
       if (e.type === 'harddrop' && e.rows > 0) retrigger(boardWrap, 'bump');
       else if (e.type === 'clear') {
-        if (e.lines === 4) popup('QUAD!', 'big');
-        else if (e.lines === 3) popup('TRIPLE');
-        else if (e.lines === 2) popup('DOUBLE');
+        const subs = [];
+        if (e.b2b) subs.push('BACK-TO-BACK');
+        if (e.combo > 0) subs.push('COMBO ×' + e.combo);
+        if (e.perfect) {
+          popup('PERFECT CLEAR!', 'pc', [e.name].concat(subs));
+          confetti(60);
+        } else if (e.tspin) popup(e.name + '!', 'tspin', subs);
+        else if (e.lines === 4) popup('QUAD!', 'big', subs);
+        else if (e.lines >= 2 || subs.length) popup(e.name, '', subs);
+      } else if (e.type === 'tspin') {
+        popup(e.name, 'tspin');
       } else if (e.type === 'gem') {
         popup(e.left ? 'GEM! ' + e.left + ' LEFT' : 'ALL GEMS!', 'gem');
       } else if (e.type === 'levelup' && announceLevels) {
