@@ -1070,6 +1070,17 @@ test('Stackfall menu offers every Prism Stack mode', () => {
   for (const d of Object.keys(C.DIFFICULTY)) assert(sfHtml.includes(`'${d}'`), d);
 });
 
+test('both pages lock down the network with the same Content-Security-Policy', () => {
+  const csp = h => (h.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/) || [])[1];
+  for (const [name, h] of [['Prism Stack', html], ['Stackfall', sfHtml]]) {
+    const p = csp(h);
+    assert(p, name + ' has no CSP');
+    for (const rule of ["default-src 'none'", "connect-src 'none'", "font-src 'none'", "form-action 'none'", "base-uri 'none'"]) assert(p.includes(rule), name + ' missing ' + rule);
+    assert(!/https?:/.test(p), name + ' CSP allows a remote host');
+  }
+  assert.strictEqual(csp(html), csp(sfHtml));
+});
+
 test('Stackfall makes no network requests (no external URLs in code)', () => {
   const code = sfHtml.replace(/<!--[\s\S]*?-->/g, '');
   assert(!/(src|href)\s*=\s*["']https?:/i.test(code), 'external src/href');

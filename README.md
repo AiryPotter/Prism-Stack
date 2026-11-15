@@ -51,8 +51,9 @@ Defaults also include A (rotate 180°), C / Shift (hold) and P / Esc (pause). Ev
 
 ## Privacy
 - **No ads, analytics, trackers, cookies or accounts.**
-- **No network requests.** Prism Stack enforces this with a strict Content-Security-Policy (`connect-src 'none'`).
+- **No network requests.** Both games enforce this with the same strict Content-Security-Policy (`default-src 'none'`, `connect-src 'none'`), and the release check confirms zero requests in a real browser.
 - Only your scores and settings are saved, in your browser's `localStorage`. They never leave your device. If the browser blocks saving, the game still works with default settings.
+- Stackfall can also keep sound clips you choose for its level sounds, stored on your phone only (IndexedDB). It uses vibration, full screen and keep-screen-awake only while you play. Neither game asks for your camera, microphone, location or notifications.
 
 ## Development
 
@@ -66,6 +67,15 @@ node tests/core.test.js
 ```
 They cover rotation and kicks, the bag, lock delay, gravity, every row of the scoring table (including T-spins, back-to-back, combos and perfect clears), random fuzz games, and a bot that proves all 30 stages are winnable.
 
+**Release checks** (Phase 6):
+```bash
+node tools/fuzz.js 150          # ~5,850 random + bot games in every mode; checks the rules never break
+node tools/browser-check.js     # real headless Chrome at 1280×800 and 390×844: every mode, zero network requests, no errors, low-end CPU
+```
+`browser-check.js` drives Chrome through its DevTools Protocol with Node's built-in WebSocket, so there's nothing to install. It uses a throwaway profile. Pass Chrome's path as the first argument if it isn't found automatically.
+
+**Shared engine:** after changing the rules in `index.html`, run `node tools/sync-engine.js` to copy them into Stackfall. The tests fail if the two copies differ.
+
 The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/design-spec.md).
 
 ## Roadmap
@@ -76,7 +86,7 @@ The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/desi
 - [ ] Phase 3: touch controls inside Prism Stack itself (on hold)
 - [x] Phase 4: sound and music, settings, key remapping, top-10 scores, Zen practice speed
 - [x] Phase 5: animations (lock flash, hard-drop streaks, line-clear sweep and shards, level-up glow, game-over sweep), calm mode, more end-of-game stats, Stages 21–30
-- [ ] Phase 6: final hardening and privacy audit
+- [x] Phase 6: long fuzz runs, headless browser checks (desktop and phone), low-end performance check, privacy audit — **v1.0**
 
 ## Contributing
 Issues and pull requests are welcome. Please keep the two core rules:
