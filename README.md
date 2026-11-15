@@ -14,10 +14,10 @@ Or download the repo and double-click `index.html`.
 
 | Game | File | Best on | Highlights |
 |---|---|---|---|
-| **Prism Stack** | [`index.html`](index.html) | PC / keyboard | Marathon (Easy / Normal / Hard), 20-stage campaign with star ratings, Sprint, Ultra, Daily Challenge, Zen |
+| **Prism Stack** | [`index.html`](index.html) | PC / keyboard | Marathon (Easy / Normal / Hard), 20-stage campaign with star ratings, Sprint, Ultra, Daily Challenge, Zen practice (speed slider), sound and music, settings, key remapping, top-10 scores |
 | **Stackfall** | [`stackfall/index.html`](stackfall/index.html) | Android / touch | **All the same modes as Prism Stack** (Marathon Easy/Normal/Hard, 20 Stages, Sprint, Ultra, Daily) plus **Zen practice** with a fall-speed slider from frozen to instant, swipe and tap controls, level sounds, vibration, full-screen, screen wake-lock |
 
-These are two separate apps with their own look, controls and screens. They share one rules engine: Stackfall contains an exact copy of Prism Stack's `game-core` script, so every mode plays by identical rules (the Daily Challenge is even the same puzzle on both). The tests fail if the two copies ever drift apart. To change the rules, edit `index.html` first, then copy its `game-core` script into `stackfall/index.html`.
+These are two separate apps with their own look, controls and screens. They share one rules engine: Stackfall contains an exact copy of Prism Stack's `game-core` script, so every mode plays by identical rules (the Daily Challenge is even the same puzzle on both). The tests fail if the two copies ever drift apart. To change the rules, edit `index.html` first, then run `node tools/sync-engine.js` to copy the engine into Stackfall.
 
 ## Prism Stack features
 - 10 × 20 field with a hidden 20-row buffer, 7-bag randomizer, 5-piece next queue, ghost piece and hold
@@ -25,7 +25,10 @@ These are two separate apps with their own look, controls and screens. They shar
 - Tunable DAS (170 ms) and ARR (50 ms), soft drop and hard drop, 500 ms lock delay with 15 resets
 - Guideline gravity curve, level up every 10 lines
 - **Modern scoring:** T-spins (full and mini, 3-corner rule), back-to-back ×1.5, combos and perfect clears, with on-screen callouts like "T-SPIN DOUBLE!", "BACK-TO-BACK" and "COMBO ×3"
-- **Modes:** Marathon (3 difficulties), **Stages** (20 levels: Lines, Timed and Dig goals, 1–3 stars), **Sprint** (40 lines), **Ultra** (2-minute score attack), **Daily Challenge** (same puzzle for everyone each day, fully offline) and **Zen** (no game over)
+- **Modes:** Marathon (3 difficulties), **Stages** (20 levels: Lines, Timed and Dig goals, 1–3 stars), **Sprint** (40 lines), **Ultra** (2-minute score attack), **Daily Challenge** (same puzzle for everyone each day, fully offline) and **Zen practice** (no game over, with a fall-speed slider from frozen to instant that you can change mid-game)
+- **Sound:** synthesized sound effects for every move, clear and T-spin, plus an optional original music loop (off by default). No audio files; nothing downloads.
+- **Settings:** DAS, ARR, soft-drop speed, Marathon start level (1–15), next pieces shown (1–5), ghost piece, sound and music volume, and **key remapping**
+- **Top scores:** a top 10 for each Marathon difficulty, Sprint, Ultra and the Daily Challenge, with dates
 
 ### Controls (keyboard)
 | Key | Action |
@@ -36,7 +39,7 @@ These are two separate apps with their own look, controls and screens. They shar
 | ↑ / X | Rotate clockwise |
 | Z / Ctrl | Rotate counter-clockwise |
 
-The in-game **Controls** screen lists hold, 180° rotate and pause.
+Defaults also include A (rotate 180°), C / Shift (hold) and P / Esc (pause). Every key except Esc, Enter and R can be changed in **Settings → Keys**.
 
 ## Stackfall controls (touch)
 - Drag left/right to move · tap to rotate
@@ -47,7 +50,7 @@ The in-game **Controls** screen lists hold, 180° rotate and pause.
 ## Privacy
 - **No ads, analytics, trackers, cookies or accounts.**
 - **No network requests.** Prism Stack enforces this with a strict Content-Security-Policy (`connect-src 'none'`).
-- Only your best scores and settings are saved, in your browser's `localStorage`. They never leave your device.
+- Only your scores and settings are saved, in your browser's `localStorage`. They never leave your device. If the browser blocks saving, the game still works with default settings.
 
 ## Development
 
@@ -69,7 +72,7 @@ The full design spec and phased roadmap are in [`docs/design-spec.md`](docs/desi
 - [x] Phase 2: T-spins, back-to-back, combos, perfect clears
 - [x] Phone play: Stackfall has every Prism Stack mode with touch controls
 - [ ] Phase 3: touch controls inside Prism Stack itself (on hold)
-- [ ] Phase 4: sound, settings, key remapping, top-10 scores
+- [x] Phase 4: sound and music, settings, key remapping, top-10 scores, Zen practice speed
 - [ ] Phase 5: animations and polish
 - [ ] Phase 6: final hardening and privacy audit
 

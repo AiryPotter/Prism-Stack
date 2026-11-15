@@ -1115,9 +1115,15 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
     throw new Error('Unknown mode: ' + s.mode);
   }
 
-  function createGame(s) {
+  // extra (optional): player settings that don't change a mode's rules —
+  //   config: { DAS_MS, ARR_MS, SOFT_DROP_FACTOR }, startLevel (Marathon).
+  function createGame(s, extra) {
     const m = buildMode(s);
-    return new Game({ rng: m.seed == null ? Math.random : mulberry32(m.seed), rules: m.rules });
+    extra = extra || {};
+    return new Game({
+      rng: m.seed == null ? Math.random : mulberry32(m.seed), rules: m.rules,
+      config: extra.config, startLevel: extra.startLevel,
+    });
   }
 
   root.PrismCore = {

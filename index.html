@@ -2,7 +2,7 @@
 <!--
   Prism Stack — free, open-source (MIT), offline falling-block puzzle game
   https://github.com/AiryPotter/Prism-Stack
-  Build: Phase 0–2 + Modes update (modern scoring: T-spins, back-to-back, combos, perfect clears)
+  Build: Phase 0–2 + 4 + Modes update (scoring; sound, settings, key remapping, top-10, Zen practice speed)
   Privacy: makes no network requests. The CSP below blocks all external loading.
 -->
 <html lang="en">
@@ -360,6 +360,53 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 .tile.next { border-color: var(--accent-2); box-shadow: 0 0 14px rgba(46, 230, 255, 0.25); }
 .tile:disabled { opacity: 0.32; cursor: default; }
 
+/* ----- Phase 4: links row, Zen speed, settings, top scores ----- */
+.links { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.wide-block { width: 100%; }
+.wide-block:empty { display: none; }
+.speed, .set-group {
+  width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--panel-border); border-radius: 12px; padding: 10px;
+}
+.speed label, .set-row label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.speed output, .set-row output { color: var(--accent-2); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.speed input[type=range], .set-row input[type=range] { display: block; width: 100%; margin: 6px 0 2px; accent-color: var(--accent); cursor: pointer; }
+.speed .ends { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+.settings { width: 100%; display: grid; gap: 8px; }
+.set-group h4 { margin: 0 0 6px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent-2); }
+.set-row { display: grid; gap: 4px; padding: 4px 0; }
+.set-row + .set-row { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+.set-row .seg, .scores-tabs { display: flex; margin: 0; }
+.set-row .seg-btn { flex: 1; }
+.set-row .seg-btn.on { background: rgba(46, 230, 255, 0.2); color: #a9f5ff; }
+.set-inline { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.switch {
+  appearance: none; cursor: pointer; border: 1px solid var(--panel-border); border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06); color: var(--muted); font-size: 11px; font-weight: 700; padding: 5px 12px; min-width: 56px;
+}
+.switch[aria-pressed="true"] { background: rgba(46, 230, 255, 0.16); border-color: rgba(46, 230, 255, 0.5); color: var(--text); }
+.keymap { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.keybtn {
+  appearance: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--text);
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 4px 8px; min-width: 84px;
+}
+.keybtn.listening { border-color: var(--gold); color: var(--gold); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0.55; } }
+.scores-tabs { flex-wrap: wrap; width: 100%; }
+.scores-tabs .seg-btn { flex: 1 0 30%; font-size: 11px; }
+.scores-tabs .seg-btn.on { background: rgba(139, 108, 255, 0.3); color: var(--text); }
+.toplist { width: 100%; margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; counter-reset: rank; }
+.toplist li {
+  counter-increment: rank; display: grid; grid-template-columns: 2.2em 1fr auto; gap: 8px; align-items: baseline;
+  font-size: 13px; padding: 4px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.03); text-align: left;
+}
+.toplist li::before { content: "#" counter(rank); color: var(--muted); font-size: 11px; }
+.toplist li b { font-variant-numeric: tabular-nums; }
+.toplist li small { color: var(--muted); font-size: 11px; }
+.toplist li.fresh { background: rgba(255, 216, 74, 0.12); }
+.toplist .empty { grid-template-columns: 1fr; color: var(--muted); text-align: center; }
+.toplist .empty::before { content: none; }
+
 /* Stage intro */
 .kindtag {
   font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
@@ -436,11 +483,51 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
             <button class="mode-btn" data-act="play" data-mode="sprint"><b>Sprint</b><small id="m-sprint">Clear 40 lines fast</small></button>
             <button class="mode-btn" data-act="play" data-mode="ultra"><b>Ultra</b><small id="m-ultra">2-minute score attack</small></button>
             <button class="mode-btn" data-act="play" data-mode="daily"><b>Daily Challenge</b><small id="m-daily">Today's puzzle</small></button>
-            <button class="mode-btn" data-act="play" data-mode="zen"><b>Zen</b><small>No game over · no speed-up</small></button>
+            <button class="mode-btn" data-act="zen"><b>Zen practice</b><small id="m-zen">Your speed · no game over</small></button>
           </div>
         </div>
-        <button class="linkbtn" data-act="keys">Controls</button>
+        <div class="links">
+          <button class="linkbtn" data-act="keys">Controls</button>
+          <button class="linkbtn" data-act="settings">Settings</button>
+          <button class="linkbtn" data-act="scores">Top scores</button>
+        </div>
         <p class="privacy">Offline · no ads · no tracking</p>
+      </div>
+    </div>
+
+    <!-- Zen practice setup -->
+    <div class="overlay" id="ov-zen">
+      <div class="card">
+        <h3>ZEN PRACTICE</h3>
+        <p class="tag">No game over and no speed-up. Pick how fast the blocks fall, from frozen to instant. You can change it any time from the pause screen.</p>
+        <div id="zenSetup" class="wide-block"></div>
+        <div class="btn-row">
+          <button class="btn primary" data-act="play" data-mode="zen" data-primary>Start</button>
+          <button class="btn" data-act="menu">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="overlay" id="ov-settings">
+      <div class="card">
+        <h3>SETTINGS</h3>
+        <div id="settingsBody" class="settings"></div>
+        <div class="btn-row">
+          <button class="btn primary" data-act="menu" data-primary>Done</button>
+          <button class="btn" data-act="reset-settings">Reset all</button>
+        </div>
+        <p class="hint">Saved on this device only.</p>
+      </div>
+    </div>
+
+    <!-- Top scores -->
+    <div class="overlay" id="ov-scores">
+      <div class="card">
+        <h3>TOP SCORES</h3>
+        <div class="seg scores-tabs" id="scoreTabs" role="group" aria-label="Mode"></div>
+        <ol class="toplist" id="topList"></ol>
+        <button class="btn primary" data-act="menu" data-primary>Back</button>
       </div>
     </div>
 
@@ -448,19 +535,12 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     <div class="overlay" id="ov-keys">
       <div class="card">
         <h3>CONTROLS</h3>
-        <div class="keys">
-          <kbd>← →</kbd><span>Move</span>
-          <kbd>↓</kbd><span>Soft drop</span>
-          <kbd>Space</kbd><span>Hard drop</span>
-          <kbd>↑ / X</kbd><span>Rotate right</span>
-          <kbd>Z / Ctrl</kbd><span>Rotate left</span>
-          <kbd>A</kbd><span>Rotate 180°</span>
-          <kbd>C / Shift</kbd><span>Hold</span>
-          <kbd>P / Esc</kbd><span>Pause</span>
-          <kbd>R</kbd><span>Restart</span>
-        </div>
+        <div class="keys" id="keysList"></div>
         <p class="hint">In menus: arrows to choose · Enter to select · Esc to go back</p>
-        <button class="btn primary" data-act="menu" data-primary>Back</button>
+        <div class="btn-row">
+          <button class="btn primary" data-act="menu" data-primary>Back</button>
+          <button class="btn" data-act="settings">Change keys</button>
+        </div>
       </div>
     </div>
 
@@ -494,6 +574,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       <div class="card">
         <h3>PAUSED</h3>
         <p class="tag" id="p-mode"></p>
+        <div id="p-speed" class="wide-block"></div>
         <div class="btn-row">
           <button class="btn primary" data-act="resume" data-primary>Resume</button>
           <button class="btn" data-act="restart">Restart</button>
@@ -1447,9 +1528,15 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     throw new Error('Unknown mode: ' + s.mode);
   }
 
-  function createGame(s) {
+  // extra (optional): player settings that don't change a mode's rules —
+  //   config: { DAS_MS, ARR_MS, SOFT_DROP_FACTOR }, startLevel (Marathon).
+  function createGame(s, extra) {
     const m = buildMode(s);
-    return new Game({ rng: m.seed == null ? Math.random : mulberry32(m.seed), rules: m.rules });
+    extra = extra || {};
+    return new Game({
+      rng: m.seed == null ? Math.random : mulberry32(m.seed), rules: m.rules,
+      config: extra.config, startLevel: extra.startLevel,
+    });
   }
 
   root.PrismCore = {
@@ -1490,6 +1577,44 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     },
   };
   const SAVE_KEY = 'prismstack.save.v1';
+
+  // ----- Settings defaults (Phase 4) -------------------------------------
+  const DEFAULT_PREFS = {
+    das: CONFIG.DAS_MS, arr: CONFIG.ARR_MS, softDrop: CONFIG.SOFT_DROP_FACTOR, // 0 = instant
+    ghost: true, nextCount: CONFIG.NEXT_COUNT, startLevel: 1,
+    sound: true, sfxVol: 70, music: false, musicVol: 45,
+    zenSpeed: 36,
+  };
+  const PREF_RANGE = {
+    das: [50, 300], arr: [0, 100], softDrop: [0, 40], nextCount: [1, 5], startLevel: [1, 15],
+    sfxVol: [0, 100], musicVol: [0, 100], zenSpeed: [0, 100],
+  };
+  // Remappable actions. Esc always pauses / goes back; R restarts; Enter confirms.
+  const ACTIONS = [
+    ['left', 'Move left'], ['right', 'Move right'], ['soft', 'Soft drop'], ['hard', 'Hard drop'],
+    ['cw', 'Rotate right'], ['ccw', 'Rotate left'], ['r180', 'Rotate 180°'], ['hold', 'Hold'], ['pause', 'Pause'],
+  ];
+  const DEFAULT_KEYS = {
+    left: ['ArrowLeft'], right: ['ArrowRight'], soft: ['ArrowDown'], hard: ['Space'],
+    cw: ['ArrowUp', 'KeyX'], ccw: ['KeyZ', 'ControlLeft', 'ControlRight'], r180: ['KeyA'],
+    hold: ['KeyC', 'ShiftLeft', 'ShiftRight'], pause: ['KeyP'],
+  };
+  const RESERVED_KEYS = ['Escape', 'Enter', 'NumpadEnter', 'Tab', 'KeyR', 'MetaLeft', 'MetaRight', 'AltLeft', 'AltRight'];
+  function cleanKeys(k) {
+    const out = {}, used = new Set();
+    for (const [a] of ACTIONS) {
+      const list = k && Array.isArray(k[a]) ? k[a] : DEFAULT_KEYS[a];
+      out[a] = list.filter(c => typeof c === 'string' && !RESERVED_KEYS.includes(c) && !used.has(c));
+      out[a].forEach(c => used.add(c));
+    }
+    return out;
+  }
+  // Which modes keep a top 10. lower = smaller is better (times).
+  const TOP_LISTS = {
+    'marathon-easy': { label: 'Marathon · Easy' }, 'marathon-normal': { label: 'Marathon · Normal' },
+    'marathon-hard': { label: 'Marathon · Hard' }, sprint: { label: 'Sprint', lower: true },
+    ultra: { label: 'Ultra' }, daily: { label: 'Daily' },
+  };
   function loadSave() {
     const raw = Store.get(SAVE_KEY, null);
     const s = raw && typeof raw === 'object' ? raw : {};
@@ -1502,6 +1627,28 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     // Carry over the best score from the first build (it was Hard).
     const old = Number(Store.get('prismstack.best.marathon', 0)) || 0;
     if (old > (s.best['marathon-hard'] || 0)) s.best['marathon-hard'] = old;
+    // Settings (Phase 4): fill in anything missing or out of range.
+    const p = s.prefs;
+    for (const k in DEFAULT_PREFS) {
+      const d = DEFAULT_PREFS[k], v = p[k];
+      if (typeof d === 'boolean') { if (typeof v !== 'boolean') p[k] = d; }
+      else if (typeof d === 'number') {
+        const [lo, hi] = PREF_RANGE[k];
+        if (typeof v !== 'number' || !isFinite(v) || v < lo || v > hi) p[k] = d;
+      }
+    }
+    if (![0, 5, 10, 20, 40].includes(p.softDrop)) p.softDrop = DEFAULT_PREFS.softDrop;
+    p.keys = cleanKeys(p.keys);
+    // Top-10 lists, seeded from older single "best" scores.
+    s.top = s.top && typeof s.top === 'object' ? s.top : {};
+    for (const key of Object.keys(TOP_LISTS)) {
+      if (!Array.isArray(s.top[key])) {
+        s.top[key] = [];
+        const b = key === 'daily' ? (s.daily.score || 0) : (s.best[key] || 0);
+        if (b) s.top[key].push({ v: b, d: key === 'daily' ? (s.daily.date || '') : '' });
+      }
+      s.top[key] = s.top[key].filter(e => e && typeof e.v === 'number' && isFinite(e.v)).slice(0, 10);
+    }
     return s;
   }
   const save = loadSave();
@@ -1516,6 +1663,66 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   function stageStars(n) { return Number(save.stages.stars[n]) || 0; }
   function isUnlocked(n) { return n === 1 || stageStars(n - 1) > 0; }
   function totalStars() { let t = 0; for (const st of STAGES) t += stageStars(st.n); return t; }
+
+  // Add a result to a top-10 list. Returns its rank (1–10), or 0 if it missed.
+  function recordTop(key, value, date) {
+    const spec = TOP_LISTS[key];
+    if (!spec || !(value > 0)) return 0;
+    const list = save.top[key];
+    const entry = { v: value, d: date };
+    list.push(entry);
+    list.sort((a, b) => (spec.lower ? a.v - b.v : b.v - a.v));
+    list.length = Math.min(list.length, 10);
+    const rank = list.indexOf(entry) + 1;
+    freshEntry = rank ? entry : null;
+    return rank;
+  }
+  function rankText(r) { return r ? '#' + r + ' of your top 10' : 'Not in your top 10'; }
+
+  // Friendly names for key codes.
+  function keyLabel(code) {
+    const named = {
+      ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: 'Space',
+      ShiftLeft: 'Shift', ShiftRight: 'R-Shift', ControlLeft: 'Ctrl', ControlRight: 'R-Ctrl',
+      Backspace: 'Backspace', CapsLock: 'Caps', Backquote: '`', Minus: '-', Equal: '=',
+      BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'",
+      Comma: ',', Period: '.', Slash: '/',
+    };
+    if (named[code]) return named[code];
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
+    if (/^Numpad/.test(code)) return 'Num ' + code.slice(6);
+    return code;
+  }
+
+  // Zen practice speed. Slider 0..100: 0 = frozen, 1..99 = 1 row every 10 s
+  // up to 60 rows a second (log scale), 100 = instant.
+  const ZEN_MAX = 100;
+  function zenSpr(v) {
+    if (v <= 0) return Infinity;
+    if (v >= ZEN_MAX) return 0.0004;
+    return 10 * Math.pow(1 / 600, (v - 1) / (ZEN_MAX - 2));
+  }
+  function zenLabel(v) {
+    if (v <= 0) return 'Frozen · blocks don’t fall';
+    if (v >= ZEN_MAX) return 'Instant · as fast as possible';
+    const s = zenSpr(v);
+    if (s >= 1) return '1 row every ' + (s < 9.95 ? s.toFixed(1) : '10') + ' s';
+    const r = 1 / s;
+    return (r < 10 ? r.toFixed(1) : Math.round(r)) + ' rows / second';
+  }
+  function zenShort(v) {
+    if (v <= 0) return 'Frozen';
+    if (v >= ZEN_MAX) return 'Instant';
+    const s = zenSpr(v);
+    return s >= 1 ? s.toFixed(1) + 's/row' : (1 / s < 10 ? (1 / s).toFixed(1) : Math.round(1 / s)) + '/s';
+  }
+  function speedHTML() {
+    const v = save.prefs.zenSpeed;
+    return '<div class="speed"><label for="zenSpeed">Fall speed <output id="zenOut">' + zenLabel(v) + '</output></label>' +
+      '<input type="range" id="zenSpeed" data-pref="zenSpeed" min="0" max="' + ZEN_MAX + '" step="1" value="' + v + '" aria-label="Fall speed">' +
+      '<div class="ends"><span>Frozen</span><span>Slow</span><span>Fast</span><span>Instant</span></div></div>';
+  }
 
   // ===================================================================
   // FORMATTING
@@ -1656,6 +1863,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   const overlays = {
     menu: $('ov-menu'), keys: $('ov-keys'), stages: $('ov-stages'), intro: $('ov-intro'),
     pause: $('ov-pause'), confirm: $('ov-confirm'), result: $('ov-result'),
+    zen: $('ov-zen'), settings: $('ov-settings'), scores: $('ov-scores'),
   };
 
   // ===================================================================
@@ -1688,7 +1896,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     sizeCanvas(boardCanvas, cell * COLS, cell * VROWS);
     sizeCanvas(fxCanvas, cell * COLS, cell * VROWS);
     sizeCanvas(holdCanvas, Math.round(mini * 5), Math.round(mini * 3));
-    sizeCanvas(nextCanvas, Math.round(mini * 5), Math.round(mini * 3 * CONFIG.NEXT_COUNT));
+    sizeCanvas(nextCanvas, Math.round(mini * 5), Math.round(mini * 3 * save.prefs.nextCount));
     spriteCache.clear();
     render(performance.now());
   }
@@ -1762,7 +1970,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     const p = game.piece;
     if (p) {
       const cells = SHAPES[p.type][p.rot];
-      if (game.state === 'playing') {
+      if (game.state === 'playing' && save.prefs.ghost) {
         const gy = game.ghostY();
         if (gy !== p.y) {
           for (const [dx, dy] of cells) {
@@ -1809,8 +2017,9 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     g.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
     if (!game) return;
     const m = Math.round(mini * dpr);
-    const slot = nextCanvas.height / CONFIG.NEXT_COUNT;
-    game.queue.slice(0, CONFIG.NEXT_COUNT).forEach((type, i) => {
+    const n = save.prefs.nextCount;
+    const slot = nextCanvas.height / n;
+    game.queue.slice(0, n).forEach((type, i) => {
       const size = i === 0 ? m : Math.round(m * 0.85);
       drawMiniPiece(g, type, nextCanvas.width / 2, slot * i + slot / 2, size, false);
     });
@@ -1838,7 +2047,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         return [['Score', num(g.score)], ['Today', num(Math.max(dailyBest(), g.score))], leftCell,
                 ['Lines', g.lines], ['Level', g.level, 'level']];
       case 'zen':
-        return [['Score', num(g.score)], ['Lines', g.lines], ['Pieces', g.piecesPlaced], ['Time', clock(g.elapsedMs)], ['Resets', g.zenWipes]];
+        return [['Score', num(g.score)], ['Lines', g.lines], ['Speed', zenShort(save.prefs.zenSpeed)], ['Time', clock(g.elapsedMs)], ['Resets', g.zenWipes]];
       case 'stage': {
         const st = STAGES[s.stage - 1];
         const goal = st.type === 'dig' ? '◆ ' + g.countGems() + ' left' : Math.min(g.lines, r.lineGoal) + ' / ' + r.lineGoal;
@@ -1864,6 +2073,145 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     renderNext();
     updateStats();
   }
+
+  // ===================================================================
+  // AUDIO — every sound is synthesized here with Web Audio. No files, no
+  // downloads. Nothing plays until the player's first click or key press.
+  // ===================================================================
+  const Sound = (() => {
+    let ctx = null, sfxBus = null, musicBus = null, unlocked = false;
+    let musicOn = false, nextTime = 0, stepIdx = 0, timer = 0, lastMove = 0;
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+    function init() {
+      if (ctx) return true;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      try { ctx = new AC(); } catch (e) { ctx = null; return false; }
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14; comp.ratio.value = 4;
+      comp.connect(ctx.destination);
+      sfxBus = ctx.createGain(); sfxBus.connect(comp);
+      musicBus = ctx.createGain(); musicBus.connect(comp);
+      applyVolumes();
+      return true;
+    }
+    // Called on the first user gesture (browsers block audio before that).
+    function unlock() {
+      unlocked = true;
+      if (!save.prefs.sound && !save.prefs.music) return;
+      if (init() && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    }
+    function applyVolumes() {
+      if (!ctx) return;
+      sfxBus.gain.value = save.prefs.sound ? (save.prefs.sfxVol / 100) * 0.55 : 0;
+      musicBus.gain.value = (save.prefs.musicVol / 100) * 0.22;
+    }
+    function ready() { return unlocked && save.prefs.sound && init() && ctx.state !== 'closed'; }
+
+    // One enveloped oscillator note.
+    function tone(freq, dur, type, vol, when, slideTo, bus) {
+      const t = ctx.currentTime + (when || 0);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.1, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(bus || sfxBus);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    const ARP = [72, 76, 79, 84, 88];   // C major arpeggio for line clears
+
+    function sfx(name, arg) {
+      if (!ready()) return;
+      switch (name) {
+        case 'move': {
+          const now = performance.now();
+          if (now - lastMove < 35) return;       // fast auto-shift: don't machine-gun
+          lastMove = now;
+          tone(330, 0.025, 'square', 0.025);
+          break;
+        }
+        case 'rotate': tone(620, 0.045, 'triangle', 0.08); break;
+        case 'hold': tone(440, 0.09, 'sine', 0.1, 0, 660); break;
+        case 'harddrop': tone(220, 0.12, 'sine', 0.22, 0, 70); tone(90, 0.08, 'triangle', 0.12); break;
+        case 'lock': tone(170, 0.06, 'triangle', 0.1); break;
+        case 'clear': {
+          const n = Math.max(1, Math.min(4, arg || 1));
+          for (let i = 0; i < n; i++) tone(hz(ARP[i]), 0.12, 'triangle', 0.12, i * 0.05);
+          if (n === 4) tone(hz(ARP[4]), 0.25, 'sine', 0.1, 0.22);
+          break;
+        }
+        case 'tspin': tone(330, 0.18, 'square', 0.05, 0, 990); tone(hz(84), 0.2, 'triangle', 0.1, 0.12); break;
+        case 'b2b': tone(hz(91), 0.18, 'sine', 0.08, 0.18); tone(hz(96), 0.22, 'sine', 0.06, 0.26); break;
+        case 'combo': tone(hz(67 + Math.min(arg || 1, 12) * 2), 0.1, 'sine', 0.09, 0.08); break;
+        case 'perfect':
+          [72, 76, 79, 84, 79, 84, 88, 91].forEach((m, i) => tone(hz(m), 0.16, 'triangle', 0.1, 0.08 + i * 0.07));
+          break;
+        case 'level': [67, 72, 79].forEach((m, i) => tone(hz(m), 0.12, 'square', 0.05, i * 0.08)); break;
+        case 'gem': tone(hz(91), 0.25, 'sine', 0.1); tone(hz(96), 0.3, 'sine', 0.07, 0.06); break;
+        case 'lose': tone(330, 0.6, 'sawtooth', 0.06, 0, 80); break;
+        case 'win': [60, 64, 67, 72, 67, 72, 76, 79, 84].forEach((m, i) => tone(hz(m), 0.2, 'triangle', 0.11, i * 0.09)); break;
+        case 'timeup': [79, 76, 72].forEach((m, i) => tone(hz(m), 0.18, 'triangle', 0.1, i * 0.12)); break;
+        case 'click': tone(880, 0.03, 'sine', 0.05); break;
+      }
+    }
+
+    // ----- Music: an original, gentle 8-bar loop (Am – F – C – G, twice).
+    // Soft bass on the beat plus a triangle arpeggio in eighth notes.
+    const BPM = 108, EIGHTH = 60 / BPM / 2;
+    const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];   // Am F C G
+    const PATTERN = [0, 1, 2, 1, 0, 1, 2, 1];
+    function scheduleStep(t) {
+      const bar = Math.floor(stepIdx / 8) % 8, beat = stepIdx % 8;
+      const chord = CHORDS[bar % 4];
+      const lift = bar >= 4 ? 12 : 0;                          // second half an octave up
+      if (beat % 4 === 0) toneAt(hz(chord[0] - 12), EIGHTH * 3.5, 'sine', 0.16, t);
+      const note = chord[PATTERN[beat]] + 12 + (beat === 7 && bar % 2 ? 2 : 0) + lift * (beat % 2);
+      toneAt(hz(note), EIGHTH * 0.9, 'triangle', 0.07, t);
+      stepIdx++;
+    }
+    function toneAt(freq, dur, type, vol, t) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(musicBus);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    function pump() {
+      if (!musicOn || !ctx) return;
+      while (nextTime < ctx.currentTime + 0.25) { scheduleStep(nextTime); nextTime += EIGHTH; }
+    }
+    // Music plays only while a game is running and Music is switched on.
+    function setMusic(want) {
+      want = want && unlocked && save.prefs.music;
+      if (want === musicOn) return;
+      if (want) {
+        if (!init()) return;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        musicOn = true;
+        nextTime = ctx.currentTime + 0.08;
+        musicBus.gain.cancelScheduledValues(ctx.currentTime);
+        applyVolumes();
+        timer = setInterval(pump, 90);
+        pump();
+      } else {
+        musicOn = false;
+        clearInterval(timer);
+        if (ctx) {   // quick fade so notes already scheduled don't ring on
+          const t = ctx.currentTime;
+          musicBus.gain.setValueAtTime(musicBus.gain.value, t);
+          musicBus.gain.linearRampToValueAtTime(0, t + 0.15);
+        }
+      }
+    }
+    return { unlock, sfx, setMusic, applyVolumes, get unlocked() { return unlocked; }, get musicOn() { return musicOn; } };
+  })();
+  ['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, () => Sound.unlock(), { capture: true }));
 
   // ===================================================================
   // EFFECTS — popups and confetti
@@ -1932,9 +2280,20 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 
   function handleEvents() {
     const announceLevels = session && (session.mode === 'marathon' || session.mode === 'ultra' || session.mode === 'daily');
+    let locked = false, cleared = false;
     for (const e of game.drainEvents()) {
-      if (e.type === 'harddrop' && e.rows > 0) retrigger(boardWrap, 'bump');
+      if (e.type === 'move') Sound.sfx('move');
+      else if (e.type === 'rotate') Sound.sfx('rotate');
+      else if (e.type === 'hold') Sound.sfx('hold');
+      else if (e.type === 'lock') locked = true;
+      if (e.type === 'harddrop') { Sound.sfx('harddrop'); if (e.rows > 0) retrigger(boardWrap, 'bump'); }
       else if (e.type === 'clear') {
+        cleared = true;
+        if (e.perfect) Sound.sfx('perfect');
+        else if (e.tspin) Sound.sfx('tspin');
+        else Sound.sfx('clear', e.lines);
+        if (e.b2b) Sound.sfx('b2b');
+        if (e.combo > 0) Sound.sfx('combo', e.combo);
         const subs = [];
         if (e.b2b) subs.push('BACK-TO-BACK');
         if (e.combo > 0) subs.push('COMBO ×' + e.combo);
@@ -1945,16 +2304,20 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         else if (e.lines === 4) popup('QUAD!', 'big', subs);
         else if (e.lines >= 2 || subs.length) popup(e.name, '', subs);
       } else if (e.type === 'tspin') {
+        Sound.sfx('tspin');
         popup(e.name, 'tspin');
       } else if (e.type === 'gem') {
+        Sound.sfx('gem');
         popup(e.left ? 'GEM! ' + e.left + ' LEFT' : 'ALL GEMS!', 'gem');
       } else if (e.type === 'levelup' && announceLevels) {
+        Sound.sfx('level');
         slots.forEach((sl, i) => { if ((hudSpec()[i] || [])[2] === 'level') retrigger(sl.node, 'pulse'); });
         popup('LEVEL ' + e.level);
       } else if (e.type === 'zenwipe') {
         popup('FRESH START');
       }
     }
+    if (locked && !cleared) Sound.sfx('lock');
   }
 
   // ===================================================================
@@ -1990,7 +2353,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       case 'sprint': return 'Sprint · 40 lines';
       case 'ultra': return 'Ultra · 2 minutes';
       case 'daily': return 'Daily · ' + todayLabel();
-      case 'zen': return 'Zen';
+      case 'zen': return 'Zen practice · ' + zenShort(save.prefs.zenSpeed);
       case 'stage': return 'Stage ' + s.stage + ' · ' + STAGES[s.stage - 1].kind;
     }
     return 'Prism Stack';
@@ -2011,6 +2374,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     setText($('m-sprint'), save.best.sprint ? 'Best ' + clockMs(save.best.sprint) : 'Clear 40 lines fast');
     setText($('m-ultra'), save.best.ultra ? 'Best ' + num(save.best.ultra) : '2-minute score attack');
     setText($('m-daily'), todayLabel() + (dailyBest() ? ' · Best ' + num(dailyBest()) : " · today's puzzle"));
+    setText($('m-zen'), 'Speed: ' + zenShort(save.prefs.zenSpeed) + ' · no game over');
   }
   function showMenu() {
     clearTimers();
@@ -2021,7 +2385,103 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     updateMenu();
     showOverlay('menu');
   }
-  function showKeys() { screen = 'keys'; showOverlay('keys'); }
+  function bindingText(action) {
+    const list = save.prefs.keys[action];
+    const extra = action === 'pause' ? ['Esc'] : [];
+    const all = list.map(keyLabel).concat(extra);
+    return all.length ? all.join(' / ') : '— none —';
+  }
+  function showKeys() {
+    screen = 'keys';
+    $('keysList').innerHTML = ACTIONS.map(([a, label]) =>
+      '<kbd>' + esc(bindingText(a)) + '</kbd><span>' + label + '</span>').join('') +
+      '<kbd>R</kbd><span>Restart</span>';
+    showOverlay('keys');
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ----- Zen practice setup ------------------------------------------------
+  function showZen() { screen = 'zen'; $('zenSetup').innerHTML = speedHTML(); showOverlay('zen'); }
+
+  // ----- Settings ------------------------------------------------------------
+  let listening = null;            // action waiting for a new key
+  function softLabel(v) { return v > 0 ? '×' + v : 'Instant'; }
+  function rangeRow(pref, label, min, max, step, fmt) {
+    const v = save.prefs[pref];
+    return '<div class="set-row"><label for="set-' + pref + '">' + label + ' <output id="out-' + pref + '">' + fmt(v) + '</output></label>' +
+      '<input type="range" id="set-' + pref + '" data-pref="' + pref + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + v + '"></div>';
+  }
+  function segRow(pref, label, values, fmt) {
+    return '<div class="set-row"><label>' + label + '</label><div class="seg" role="group" aria-label="' + label + '">' +
+      values.map(v => '<button class="seg-btn' + (save.prefs[pref] === v ? ' on' : '') + '" data-act="set" data-pref="' + pref + '" data-val="' + v + '" aria-pressed="' + (save.prefs[pref] === v) + '">' + fmt(v) + '</button>').join('') +
+      '</div></div>';
+  }
+  function switchRow(pref, label) {
+    const on = !!save.prefs[pref];
+    return '<div class="set-row"><div class="set-inline">' + label +
+      '<button class="switch" data-act="switch" data-pref="' + pref + '" aria-pressed="' + on + '">' + (on ? 'On' : 'Off') + '</button></div></div>';
+  }
+  const SETTING_FMT = {
+    das: v => v + ' ms', arr: v => (v === 0 ? 'Instant' : v + ' ms'), startLevel: v => 'Level ' + v,
+    sfxVol: v => v + '%', musicVol: v => v + '%',
+  };
+  function renderSettings() {
+    const keys = ACTIONS.map(([a, label]) =>
+      '<span>' + label + '</span><button class="keybtn' + (listening === a ? ' listening' : '') + '" data-act="bind" data-action="' + a + '">' +
+      (listening === a ? 'Press a key…' : esc(bindingText(a))) + '</button>').join('');
+    $('settingsBody').innerHTML =
+      '<div class="set-group"><h4>Handling</h4>' +
+        rangeRow('das', 'Auto-shift delay (DAS)', 50, 300, 5, SETTING_FMT.das) +
+        rangeRow('arr', 'Auto-repeat rate (ARR)', 0, 100, 5, SETTING_FMT.arr) +
+        segRow('softDrop', 'Soft-drop speed', [5, 10, 20, 40, 0], softLabel) +
+      '</div>' +
+      '<div class="set-group"><h4>Game</h4>' +
+        rangeRow('startLevel', 'Marathon start level', 1, 15, 1, SETTING_FMT.startLevel) +
+        segRow('nextCount', 'Next pieces shown', [1, 2, 3, 4, 5], String) +
+        switchRow('ghost', 'Ghost piece') +
+      '</div>' +
+      '<div class="set-group"><h4>Sound</h4>' +
+        switchRow('sound', 'Sound effects') + rangeRow('sfxVol', 'Effects volume', 0, 100, 5, SETTING_FMT.sfxVol) +
+        switchRow('music', 'Music (original loop)') + rangeRow('musicVol', 'Music volume', 0, 100, 5, SETTING_FMT.musicVol) +
+      '</div>' +
+      '<div class="set-group"><h4>Keys</h4><div class="keymap">' + keys + '</div>' +
+        '<p class="hint" style="margin-top:6px">Click a key, then press the new one. Esc cancels. Esc (pause/back), Enter and R are fixed.</p>' +
+        '<div class="btn-row"><button class="btn" data-act="reset-keys">Default keys</button></div>' +
+      '</div>';
+  }
+  function showSettings() {
+    listening = null;
+    screen = 'settings';
+    renderSettings();
+    showOverlay('settings');
+  }
+  // A setting changed: save it and apply it right away.
+  function applyPref(pref, value) {
+    save.prefs[pref] = value;
+    persist();
+    if (pref === 'nextCount') layout();
+    if (pref === 'sound' || pref === 'sfxVol' || pref === 'musicVol') Sound.applyVolumes();
+    if (pref === 'sound' && value) { Sound.unlock(); Sound.sfx('click'); }
+    if (pref === 'zenSpeed' && game && session && session.mode === 'zen') {
+      game.setSecondsPerRow(zenSpr(value));
+      setText(modeTagEl, modeTag(session));
+    }
+    if (pref === 'zenSpeed') setText($('m-zen'), 'Speed: ' + zenShort(value) + ' · no game over');
+  }
+
+  // ----- Top scores ------------------------------------------------------------
+  let scoreTab = null, freshEntry = null;
+  function showScores(tab) {
+    screen = 'scores';
+    scoreTab = tab || scoreTab || 'marathon-' + save.prefs.difficulty;
+    $('scoreTabs').innerHTML = Object.entries(TOP_LISTS).map(([k, s]) =>
+      '<button class="seg-btn' + (k === scoreTab ? ' on' : '') + '" data-act="score-tab" data-tab="' + k + '" aria-pressed="' + (k === scoreTab) + '">' + s.label + '</button>').join('');
+    const list = save.top[scoreTab] || [], spec = TOP_LISTS[scoreTab];
+    $('topList').innerHTML = list.length
+      ? list.map(e => '<li' + (e === freshEntry ? ' class="fresh"' : '') + '><b>' + (spec.lower ? clockMs(e.v) : num(e.v)) + '</b><small>' + esc(e.d || '') + '</small></li>').join('')
+      : '<li class="empty">No scores yet. Go set one!</li>';
+    showOverlay('scores');
+  }
 
   // ----- Stage select ---------------------------------------------------
   function showStages() {
@@ -2079,10 +2539,19 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   }
 
   // ----- Playing ----------------------------------------------------------
+  // Player settings that apply to every new game.
+  function gameSettings(s) {
+    const p = save.prefs;
+    return {
+      config: { DAS_MS: p.das, ARR_MS: p.arr, SOFT_DROP_FACTOR: p.softDrop > 0 ? p.softDrop : 10000 },
+      startLevel: s.mode === 'marathon' ? p.startLevel : 1,
+    };
+  }
   function startSession(s) {
     clearTimers();
+    if (s.mode === 'zen') s = Object.assign({}, s, { secondsPerRow: zenSpr(save.prefs.zenSpeed) });
     session = s;
-    game = P.createGame(s);
+    game = P.createGame(s, gameSettings(s));
     screen = 'playing';
     acc = 0;
     lastTime = performance.now();
@@ -2103,6 +2572,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     game.releaseAll();
     screen = 'paused';
     setText($('p-mode'), modeTag(session));
+    $('p-speed').innerHTML = session.mode === 'zen' ? speedHTML() : '';
     showOverlay('pause');
   }
   function resume() {
@@ -2133,10 +2603,14 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     screen = 'ending';
     const o = game.outcome;
     if (o === 'win') {
+      Sound.sfx('win');
       if (session.mode === 'stage') popup(session.stage === STAGES.length ? 'YOU WIN!' : 'STAGE CLEAR!', 'win');
       else popup('FINISH!', 'win');
     } else if (o === 'finish') {
+      Sound.sfx('timeup');
       popup("TIME'S UP!", 'big');
+    } else {
+      Sound.sfx('lose');
     }
     endingAt = now + (o === 'lose' ? 650 : 1100);
   }
@@ -2155,8 +2629,9 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         if (isBest) save.best[key] = g.score;
         R.sub = 'Marathon · ' + DIFFICULTY[s.difficulty].label;
         R.badge = isBest && g.score > 0 ? 'NEW BEST' : '';
-        R.stats = [['Score', num(g.score)], ['Lines', g.lines], ['Level', g.level], ['Time', clock(g.elapsedMs)], ['Best', num(save.best[key])]];
-        R.buttons = again;
+        const rank = recordTop(key, g.score, todayKey());
+        R.stats = [['Score', num(g.score)], ['Lines', g.lines], ['Level', g.level], ['Time', clock(g.elapsedMs)], ['Best', num(save.best[key])], ['Rank', rankText(rank)]];
+        R.buttons = again.concat([['Top scores', 'scores-' + key]]);
         R.confetti = R.badge ? 40 : 0;
         break;
       }
@@ -2167,14 +2642,15 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
           R.title = 'FINISHED!'; R.cls = 'clear';
           R.sub = '40 lines cleared';
           R.badge = isBest ? 'NEW BEST' : '';
+          const rank = recordTop('sprint', g.elapsedMs, todayKey());
           R.stats = [['Time', clockMs(g.elapsedMs)], ['Pieces', g.piecesPlaced],
-                     ['Pieces / sec', (g.piecesPlaced / Math.max(1, g.elapsedMs / 1000)).toFixed(2)], ['Best', clockMs(save.best.sprint)]];
+                     ['Pieces / sec', (g.piecesPlaced / Math.max(1, g.elapsedMs / 1000)).toFixed(2)], ['Best', clockMs(save.best.sprint)], ['Rank', rankText(rank)]];
           R.confetti = isBest ? 70 : 30;
         } else {
           R.sub = g.lines + ' of 40 lines';
           R.stats = [['Lines', g.lines], ['Time', clockMs(g.elapsedMs)], ['Best', save.best.sprint ? clockMs(save.best.sprint) : '—']];
         }
-        R.buttons = again;
+        R.buttons = again.concat([['Top scores', 'scores-sprint']]);
         break;
       }
       case 'ultra':
@@ -2193,9 +2669,10 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
         R.cls = g.outcome === 'finish' ? 'clear' : '';
         R.sub = daily ? 'Daily Challenge · ' + todayLabel() : 'Ultra · 2 minutes';
         R.badge = isBest && g.score > 0 ? (daily ? "TODAY'S BEST" : 'NEW BEST') : '';
+        const rank = recordTop(s.mode, g.score, daily ? s.date : todayKey());
         R.stats = [['Score', num(g.score)], ['Lines', g.lines], ['Level', g.level],
-                   [daily ? "Today's best" : 'Best', num(daily ? save.daily.score : save.best.ultra)]];
-        R.buttons = again;
+                   [daily ? "Today's best" : 'Best', num(daily ? save.daily.score : save.best.ultra)], ['Rank', rankText(rank)]];
+        R.buttons = again.concat([['Top scores', 'scores-' + s.mode]]);
         R.hint = daily ? 'A new puzzle arrives tomorrow.' : '';
         R.confetti = R.badge ? 50 : 0;
         break;
@@ -2272,21 +2749,32 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   // ===================================================================
   // INPUT — keyboard
   // ===================================================================
-  const GAME_KEYS = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'soft',
-    Space: 'hard',
-    ArrowUp: 'cw', KeyX: 'cw',
-    KeyZ: 'ccw', ControlLeft: 'ccw', ControlRight: 'ccw',
-    KeyA: 'r180',
-    KeyC: 'hold', ShiftLeft: 'hold', ShiftRight: 'hold',
-  };
+  // key code -> action, built from the player's bindings (Settings > Keys).
+  let GAME_KEYS = {};
+  function buildKeyMap() {
+    GAME_KEYS = {};
+    for (const [a] of ACTIONS) for (const code of save.prefs.keys[a]) GAME_KEYS[code] = a;
+  }
+  buildKeyMap();
+  // Settings > Keys: the next key pressed becomes this action's key.
+  function captureKey(e) {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (e.code === 'Escape') { listening = null; renderSettings(); return; }
+    if (RESERVED_KEYS.includes(e.code)) { Sound.sfx('lose'); return; }
+    for (const [a] of ACTIONS) save.prefs.keys[a] = save.prefs.keys[a].filter(c => c !== e.code);
+    save.prefs.keys[listening] = [e.code];
+    listening = null;
+    persist(); buildKeyMap(); renderSettings(); Sound.sfx('click');
+    const b = document.querySelector('[data-act="bind"]'); if (b) b.focus({ preventScroll: true });
+  }
   const NAV_KEYS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 
   // Move focus to the nearest button in a direction (menus, stage grid).
   function navigate(dir) {
     const ov = document.querySelector('.overlay.show');
     if (!ov) return;
-    const items = Array.from(ov.querySelectorAll('button:not(:disabled)'));
+    const items = Array.from(ov.querySelectorAll('button:not(:disabled), input[type=range]'));
     if (!items.length) return;
     const cur = document.activeElement;
     if (!items.includes(cur)) {
@@ -2314,7 +2802,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
 
   function goBack() {
     switch (screen) {
-      case 'keys': case 'stages': showMenu(); break;
+      case 'keys': case 'stages': case 'zen': case 'settings': case 'scores': showMenu(); break;
       case 'intro': showStages(); break;
       case 'result': if (session && session.mode === 'stage') showStages(); else showMenu(); break;
       case 'paused': resume(); break;
@@ -2326,6 +2814,8 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     const code = e.code;
     const isGameKey = GAME_KEYS[code] || NAV_KEYS[code];
     if (performance.now() < inputLockUntil) { if (isGameKey || code === 'Enter') e.preventDefault(); return; }
+    const onRange = document.activeElement && document.activeElement.type === 'range';
+    if (onRange && (code === 'ArrowLeft' || code === 'ArrowRight')) return;   // let the slider move
     if (NAV_KEYS[code]) { e.preventDefault(); navigate(NAV_KEYS[code]); return; }
     if (code === 'Enter' || code === 'NumpadEnter' || code === 'Space') {
       e.preventDefault();
@@ -2337,7 +2827,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       return;
     }
     if (code === 'Escape') { e.preventDefault(); goBack(); return; }
-    if (code === 'KeyP' && screen === 'paused') { e.preventDefault(); resume(); return; }
+    if (GAME_KEYS[code] === 'pause' && screen === 'paused') { e.preventDefault(); resume(); return; }
     if (code === 'KeyR') {
       if (screen === 'paused') { e.preventDefault(); askRestart(); }
       else if (screen === 'confirm' || screen === 'result') { e.preventDefault(); retry(); }
@@ -2347,13 +2837,14 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
   }
 
   window.addEventListener('keydown', e => {
+    if (listening && screen === 'settings') { captureKey(e); return; }
     if (e.metaKey || e.altKey) return;                       // leave browser shortcuts alone
     if (e.ctrlKey && screen !== 'playing' && !/^Control/.test(e.code)) return;
     if (screen === 'ending') { if (GAME_KEYS[e.code]) e.preventDefault(); return; }
     if (screen !== 'playing') { handleMenuKey(e); return; }
 
     const act = GAME_KEYS[e.code];
-    if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); if (!e.repeat) pause(); return; }
+    if (act === 'pause' || e.code === 'Escape') { e.preventDefault(); if (!e.repeat) pause(); return; }
     if (e.code === 'KeyR') { e.preventDefault(); if (!e.repeat) askRestart(); return; }
     if (!act) return;
     e.preventDefault();
@@ -2384,7 +2875,39 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
       case 'restart': askRestart(); break;
       case 'retry': retry(); break;
       case 'cancel': cancelRestart(); break;
+      case 'zen': showZen(); break;
+      case 'settings': showSettings(); break;
+      case 'scores': freshEntry = null; showScores(); break;
+      case 'score-tab': showScores(btn.dataset.tab); break;
+      case 'set': applyPref(btn.dataset.pref, Number(btn.dataset.val)); renderSettings(); focusPref(btn.dataset.pref, btn.dataset.val); break;
+      case 'switch': applyPref(btn.dataset.pref, !save.prefs[btn.dataset.pref]); renderSettings(); focusPref(btn.dataset.pref); break;
+      case 'bind': listening = btn.dataset.action; renderSettings(); focusPref(null, null, listening); break;
+      case 'reset-keys': save.prefs.keys = cleanKeys(null); persist(); buildKeyMap(); listening = null; renderSettings(); break;
+      case 'reset-settings': {
+        const keep = { difficulty: save.prefs.difficulty };
+        save.prefs = Object.assign({}, DEFAULT_PREFS, keep, { keys: cleanKeys(null) });
+        persist(); buildKeyMap(); Sound.applyVolumes(); layout(); listening = null; renderSettings();
+        break;
+      }
+      default:
+        if (btn.dataset.act.startsWith('scores-')) showScores(btn.dataset.act.slice(7));
     }
+  });
+  // Keep keyboard focus on the control that was just changed after a re-render.
+  function focusPref(pref, val, action) {
+    let sel = action ? '[data-act="bind"][data-action="' + action + '"]'
+      : '[data-pref="' + pref + '"]' + (val != null ? '[data-val="' + val + '"]' : '');
+    const el = document.querySelector('#settingsBody ' + sel);
+    if (el) el.focus({ preventScroll: true });
+  }
+  // Sliders (settings, Zen speed): apply as they move.
+  document.addEventListener('input', e => {
+    const el = e.target;
+    if (!el || el.type !== 'range' || !el.dataset.pref) return;
+    const pref = el.dataset.pref, v = Number(el.value);
+    applyPref(pref, v);
+    const out = pref === 'zenSpeed' ? document.querySelectorAll('#zenOut') : [$('out-' + pref)];
+    out.forEach(o => { if (o) o.textContent = pref === 'zenSpeed' ? zenLabel(v) : SETTING_FMT[pref](v); });
   });
 
   // Auto-pause when the player leaves.
@@ -2409,6 +2932,7 @@ button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; 
     } else if (screen === 'ending' && now >= endingAt) {
       finishGame();
     }
+    Sound.setMusic(screen === 'playing');
     render(now);
     updateFx(dt);
     requestAnimationFrame(frame);

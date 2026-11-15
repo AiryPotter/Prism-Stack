@@ -994,6 +994,37 @@ test('other modes ignore the Zen speed setting', () => {
   assert.strictEqual(g.fallSecondsPerRow(), 1);
 });
 
+console.log('\nPhase 4 — player settings');
+
+test('player handling settings reach the game without changing mode rules', () => {
+  const g = C.createGame({ mode: 'marathon', difficulty: 'easy' }, { config: { DAS_MS: 100, ARR_MS: 0, SOFT_DROP_FACTOR: 40 } });
+  assert.strictEqual(g.cfg.DAS_MS, 100); assert.strictEqual(g.cfg.ARR_MS, 0); assert.strictEqual(g.cfg.SOFT_DROP_FACTOR, 40);
+  assert.strictEqual(g.cfg.LOCK_DELAY_MS, 1000, 'Easy keeps its 1 s lock delay');
+});
+
+test('custom DAS/ARR: ARR 0 shifts all the way once DAS charges', () => {
+  const g = C.createGame({ mode: 'zen' }, { config: { DAS_MS: 100, ARR_MS: 0 } }); clearBoard(g); g.spawn('O');
+  const x0 = g.piece.x;
+  g.press('left'); assert.strictEqual(g.piece.x, x0 - 1);
+  tickFor(g, 90, 1); assert.strictEqual(g.piece.x, x0 - 1, 'not yet charged');
+  tickFor(g, 20, 1); assert.strictEqual(Math.min(...cells(g).map(c => c[0])), 0, 'instant to the wall');
+});
+
+test('start level: Marathon can start at level 10 and levels up from there', () => {
+  const g = C.createGame({ mode: 'marathon', difficulty: 'hard' }, { startLevel: 10 });
+  assert.strictEqual(g.level, 10);
+  assert(g.fallSecondsPerRow() < C.secondsPerRow(9));
+  clearBoard(g); g.lines = 9;
+  fillRow(g, BOTTOM, [0]); place(g, 'I', 1, -2, BOTTOM - 3); g.hardDrop();
+  assert.strictEqual(g.level, 11);
+});
+
+test('createGame without settings behaves exactly as before', () => {
+  const a = C.createGame({ mode: 'daily', date: '2026-11-15' }), b = C.createGame({ mode: 'daily', date: '2026-11-15' }, {});
+  eq(a.board, b.board); eq(a.queue, b.queue);
+  assert.strictEqual(a.cfg.DAS_MS, CONFIG.DAS_MS);
+});
+
 console.log('\nStackfall (Android edition)');
 
 const sfHtml = fs.readFileSync(path.join(__dirname, '..', 'stackfall', 'index.html'), 'utf8');
