@@ -216,6 +216,56 @@ async function playPrism(c) {
   await sleep(1800);
   ok((await c.eval(title)) === 'YOU WIN!', 'Stage 30: digging out the last gem → YOU WIN!');
   if (shotsDir) await shot(c, 'Prism Stack-results');
+  await auditPrism(c);
+}
+
+// Regression checks for the v1.0 browser-code audit (Prism Stack).
+async function auditPrism(c) {
+  const click = sel => `document.querySelector(${JSON.stringify(sel)}).click();`;
+  // Fresh save with music on, then start a game with a real key press (unlocks audio).
+  await c.eval(`localStorage.setItem('prismstack.save.v1', JSON.stringify({ prefs: { music: true } })); return 1;`);
+  await c.send('Page.reload'); await sleep(1200);
+  await c.eval(HELPERS + `window.__osc = 0; const o = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () { window.__osc++; return o.call(this); };
+    document.querySelector('[data-act=play][data-mode=marathon]').focus(); return 1;`);
+  await c.key('Enter', 'Enter', 13);
+  await sleep(1200);
+  // Hidden tab: frames stop first, then visibilitychange. Music must stop with the pause.
+  const music = await c.eval(`
+    const playing = window.__osc;
+    const raf = window.requestAnimationFrame; let pending = null;
+    window.requestAnimationFrame = cb => { pending = cb; return 0; };
+    for (let i = 0; i < 40 && !pending; i++) await __wait(25);
+    Object.defineProperty(document, 'hidden', { get: () => true, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await __wait(150); const o0 = window.__osc; await __wait(1500); const o1 = window.__osc;
+    delete document.hidden; window.requestAnimationFrame = raf; if (pending) raf(pending);
+    return { wasPlaying: playing > 0, paused: document.getElementById('ov-pause').classList.contains('show'), notesWhileHidden: o1 - o0 };`);
+  ok(music.wasPlaying && music.paused && music.notesWhileHidden === 0, `audit: music stops when a hidden tab auto-pauses (${music.notesWhileHidden} notes while hidden)`);
+  // Only one Zen speed slider exists, and the pause screen's label points at it.
+  const ids = await c.eval(click('#ov-pause [data-act=menu]') + click('[data-act=zen]') + click('#ov-zen [data-act=play]') +
+    `await __wait(200); window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyP', key: 'p' })); await __wait(100);
+    const lbl = document.querySelector('#p-speed label'); return { n: document.querySelectorAll('#zenSpeed').length, ok: !!(lbl && lbl.control && lbl.control.closest('#p-speed')) };`);
+  ok(ids.n === 1 && ids.ok, 'audit: one Zen speed slider, correctly labelled');
+  // Rebinding a key that another action uses swaps them; nothing is left without a key.
+  const keys = await c.eval(click('#ov-pause [data-act=menu]') + click('[data-act=settings]') + click('[data-act=bind][data-action=right]') +
+    `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft' }));
+    const k = JSON.parse(localStorage.getItem('prismstack.save.v1')).prefs.keys;
+    return { left: k.left, right: k.right, empty: Object.values(k).filter(a => !a.length).length };`);
+  ok(keys.right[0] === 'ArrowLeft' && keys.left[0] === 'ArrowRight' && keys.empty === 0, `audit: key rebind swaps (left ${keys.left}, right ${keys.right})`);
+  // Settings: switches are named; Reset all re-applies calm mode at once.
+  const st = await c.eval(click('[data-act=reset-keys]') + click('[data-act=switch][data-pref=effects]') + click('[data-act=reset-settings]') +
+    `const sw = document.querySelector('[data-act=switch][data-pref=ghost]');
+    return { calm: document.body.classList.contains('calm'), role: sw.getAttribute('role'), name: document.getElementById(sw.getAttribute('aria-labelledby')).textContent };`);
+  ok(!st.calm && st.role === 'switch' && st.name === 'Ghost piece', 'audit: Reset all clears calm mode; switches are named');
+  // Board canvas is exactly whole cells at this pixel ratio; dialogs and zoom are accessible.
+  const misc = await c.eval(click('#ov-settings [data-act=menu]') + `
+    const cv = document.getElementById('board'), cell = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell'));
+    const dc = Math.round(cell * devicePixelRatio), ov = document.querySelector('.overlay.show');
+    return { exact: cv.width === dc * 10 && cv.height === dc * 20, dialog: ov.getAttribute('role') === 'dialog' && !!ov.getAttribute('aria-label'),
+             zoom: !/user-scalable=no|maximum-scale/.test(document.querySelector('meta[name=viewport]').content) };`);
+  ok(misc.exact, 'audit: board canvas size matches the drawn cells exactly');
+  ok(misc.dialog && misc.zoom, 'audit: menus are labelled dialogs; page zoom is allowed');
 }
 
 async function playStackfall(c, sizeName) {
@@ -246,6 +296,11 @@ async function playStackfall(c, sizeName) {
     ok(tapped.rot === (before.rot + 1) % 4, 'Stackfall touch: tap rotates');
     ok(dragged.x === before.x + 2, `Stackfall touch: drag moves one cell per step (${before.x} → ${dragged.x})`);
     ok(placed >= 1, 'Stackfall touch: flick down hard-drops');
+    // Audit: a tap on the Next card is not a tap on the board.
+    const n = await c.eval(`const r = document.getElementById('n1').getBoundingClientRect(); const p = __sf.game.piece; return { x: r.left + r.width / 2, y: r.top + r.height / 2, rot: p ? p.rot : -1 };`);
+    await c.touch([['touchStart', n.x, n.y], ['touchEnd', n.x, n.y]]);
+    const after = await c.eval('const p = __sf.game.piece; return p ? p.rot : -1;');
+    ok(after === n.rot, 'audit: tapping the Next card does not rotate the piece');
   } else {
     await c.key('ArrowUp', 'ArrowUp', 38); await c.key('ArrowRight', 'ArrowRight', 39); await c.key('ArrowRight', 'ArrowRight', 39); await c.key('Space', ' ', 32);
     await sleep(300);
@@ -260,6 +315,13 @@ async function playStackfall(c, sizeName) {
   await c.eval(click('[data-act=menu]') + click('[data-act=stages]') + click('[data-act=stage][data-n="1"]') + click('[data-act=start-stage]') + 'const g = await __fresh(__old); g.lines = 4; __single(g); return 1;'); await sleep(1700);
   const saved = await c.eval(`return JSON.parse(localStorage.getItem('stackfall.save') || '{}');`);
   ok((await c.eval(title)) === 'Stage clear!' && saved.stages && saved.stages.stars[1] >= 1 && saved.best.sprint > 0, 'Stackfall Stage 1 clear + records saved (stars, Sprint best)');
+  // Audit: the results sheet is a named dialog, the game behind it is inert, toggles report state.
+  const a11y = await c.eval(`const ov = document.getElementById('overlay');
+    document.querySelector('#sheet [data-act=stages]').click(); document.querySelector('#sheet [data-act=menu]').click();
+    const tog = document.querySelector('#sheet [data-act=tog]');
+    return { dialog: ov.getAttribute('role') === 'dialog' && !!ov.getAttribute('aria-label'), inert: document.getElementById('app').inert,
+             pressed: tog.getAttribute('aria-pressed') };`);
+  ok(a11y.dialog && a11y.inert && (a11y.pressed === 'true' || a11y.pressed === 'false'), 'audit: Stackfall menus are labelled dialogs, game inert behind them, toggles report state');
   if (shotsDir) await shot(c, `Stackfall-${sizeName}-results`);
 }
 

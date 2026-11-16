@@ -2,14 +2,14 @@
 <!--
   Prism Stack — free, open-source (MIT), offline falling-block puzzle game
   https://github.com/AiryPotter/Prism-Stack
-  Build: v1.0 — Phases 0–2, 4–6 + Modes (scoring, sound, settings, top-10, Zen practice, animations, 30 stages)
+  Build: v1.0.1 — Phases 0–2, 4–6 + Modes (scoring, sound, settings, top-10, Zen practice, animations, 30 stages)
   Privacy: makes no network requests. The CSP below blocks all external loading.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data: blob:; connect-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#07080f">
@@ -396,7 +396,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   appearance: none; cursor: pointer; border: 1px solid var(--panel-border); border-radius: 999px;
   background: rgba(255, 255, 255, 0.06); color: var(--muted); font-size: 11px; font-weight: 700; padding: 5px 12px; min-width: 56px;
 }
-.switch[aria-pressed="true"] { background: rgba(46, 230, 255, 0.16); border-color: rgba(46, 230, 255, 0.5); color: var(--text); }
+.switch[aria-checked="true"] { background: rgba(46, 230, 255, 0.16); border-color: rgba(46, 230, 255, 0.5); color: var(--text); }
 .keymap { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--muted); }
 .keybtn {
   appearance: none; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--text);
@@ -451,14 +451,30 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   animation: starpop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 @keyframes starpop { from { transform: scale(0) rotate(-40deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+
+/* Calm mode (setting) and the system's reduced-motion preference: switch off
+   every remaining animation. Popups still appear and fade, without bouncing. */
+body.calm .overlay.show, body.calm .result-title.win, body.calm .stars span.on, body.calm .keybtn.listening { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  #boardWrap.bump, #boardWrap.levelup, .stat.pulse b,
+  .overlay.show, .result-title.win, .stars span.on, .keybtn.listening { animation: none; }
+  #popup.pop { animation: popfade 1.1s ease-out forwards; }
+}
+
+/* Text for screen readers only */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 </style>
 </head>
 <body>
 
+<div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 <main id="app" class="wide">
   <section class="panel" id="holdPanel">
     <h2>Hold</h2>
-    <canvas id="hold"></canvas>
+    <canvas id="hold" role="img" aria-label="Hold: empty"></canvas>
   </section>
 
   <section class="panel stats" id="statsPanel">
@@ -471,12 +487,12 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   </section>
 
   <div id="boardWrap">
-    <canvas id="board"></canvas>
-    <div id="popup"></div>
-    <canvas id="fx"></canvas>
+    <canvas id="board" role="img" aria-label="Game board"></canvas>
+    <div id="popup" aria-hidden="true"></div>
+    <canvas id="fx" aria-hidden="true"></canvas>
 
     <!-- Main menu -->
-    <div class="overlay show" id="ov-menu">
+    <div class="overlay show" id="ov-menu" role="dialog" aria-modal="true" aria-label="Main menu">
       <div class="card">
         <h1 class="logo">PRISM <span>STACK</span></h1>
         <div class="menu">
@@ -508,7 +524,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Zen practice setup -->
-    <div class="overlay" id="ov-zen">
+    <div class="overlay" id="ov-zen" role="dialog" aria-modal="true" aria-label="Zen practice">
       <div class="card">
         <h3>ZEN PRACTICE</h3>
         <p class="tag">No game over and no speed-up. Pick how fast the blocks fall, from frozen to instant. You can change it any time from the pause screen.</p>
@@ -521,7 +537,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Settings -->
-    <div class="overlay" id="ov-settings">
+    <div class="overlay" id="ov-settings" role="dialog" aria-modal="true" aria-label="Settings">
       <div class="card">
         <h3>SETTINGS</h3>
         <div id="settingsBody" class="settings"></div>
@@ -534,7 +550,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Top scores -->
-    <div class="overlay" id="ov-scores">
+    <div class="overlay" id="ov-scores" role="dialog" aria-modal="true" aria-label="Top scores">
       <div class="card">
         <h3>TOP SCORES</h3>
         <div class="seg scores-tabs" id="scoreTabs" role="group" aria-label="Mode"></div>
@@ -544,7 +560,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Controls -->
-    <div class="overlay" id="ov-keys">
+    <div class="overlay" id="ov-keys" role="dialog" aria-modal="true" aria-label="Controls">
       <div class="card">
         <h3>CONTROLS</h3>
         <div class="keys" id="keysList"></div>
@@ -557,7 +573,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Stage select -->
-    <div class="overlay" id="ov-stages">
+    <div class="overlay" id="ov-stages" role="dialog" aria-modal="true" aria-label="Stages">
       <div class="card">
         <h3>STAGES</h3>
         <p class="tag" id="s-total">★ 0 / 90</p>
@@ -567,7 +583,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Stage intro -->
-    <div class="overlay" id="ov-intro">
+    <div class="overlay" id="ov-intro" role="dialog" aria-modal="true" aria-labelledby="i-title">
       <div class="card">
         <h3 id="i-title">STAGE 1</h3>
         <p class="kindtag" id="i-kind">Lines</p>
@@ -582,7 +598,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Pause -->
-    <div class="overlay" id="ov-pause">
+    <div class="overlay" id="ov-pause" role="dialog" aria-modal="true" aria-label="Paused">
       <div class="card">
         <h3>PAUSED</h3>
         <p class="tag" id="p-mode"></p>
@@ -592,12 +608,12 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
           <button class="btn" data-act="restart">Restart</button>
           <button class="btn" data-act="menu">Menu</button>
         </div>
-        <p class="hint">P or Esc to resume</p>
+        <p class="hint" id="p-hint">P or Esc to resume</p>
       </div>
     </div>
 
     <!-- Restart confirmation -->
-    <div class="overlay" id="ov-confirm">
+    <div class="overlay" id="ov-confirm" role="dialog" aria-modal="true" aria-label="Restart?">
       <div class="card">
         <h3>RESTART?</h3>
         <p class="tag">Your current game will be lost.</p>
@@ -610,7 +626,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     </div>
 
     <!-- Results: game over, finished, stage clear, YOU WIN! -->
-    <div class="overlay" id="ov-result">
+    <div class="overlay" id="ov-result" role="dialog" aria-modal="true" aria-labelledby="r-title">
       <div class="card">
         <h3 class="result-title" id="r-title">GAME OVER</h3>
         <p class="tag" id="r-sub"></p>
@@ -625,7 +641,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
 
   <section class="panel" id="nextPanel">
     <h2>Next</h2>
-    <canvas id="next"></canvas>
+    <canvas id="next" role="img" aria-label="Next pieces"></canvas>
   </section>
 </main>
 
@@ -1679,6 +1695,11 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   }
   const save = loadSave();
   document.body.classList.toggle('calm', !save.prefs.effects);
+  try {
+    const rm = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const follow = () => { if (rm.matches && save.prefs.effects) { save.prefs.effects = false; document.body.classList.add('calm'); persist(); } };
+    if (rm.addEventListener) rm.addEventListener('change', follow); else if (rm.addListener) rm.addListener(follow);
+  } catch (e) { /* older browsers: the saved setting still applies */ }
   function persist() { Store.set(SAVE_KEY, save); }
 
   function todayKey() {
@@ -1920,8 +1941,13 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
       mini = cell * 0.6;
     }
     document.documentElement.style.setProperty('--cell', cell + 'px');
-    sizeCanvas(boardCanvas, cell * COLS, cell * VROWS);
-    sizeCanvas(fxCanvas, cell * COLS, cell * VROWS);
+    // The board is drawn in whole device pixels per cell, so size the board and
+    // effects layer from that exact number (no gap or clipped row at 125%/150%).
+    const dc = Math.round(cell * dpr);
+    for (const cv of [boardCanvas, fxCanvas]) {
+      cv.width = dc * COLS; cv.height = dc * VROWS;
+      cv.style.width = dc * COLS / dpr + 'px'; cv.style.height = dc * VROWS / dpr + 'px';
+    }
     sizeCanvas(holdCanvas, Math.round(mini * 5), Math.round(mini * 3));
     sizeCanvas(nextCanvas, Math.round(mini * 5), Math.round(mini * 3 * save.prefs.nextCount));
     spriteCache.clear();
@@ -2028,7 +2054,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
         if (isGrey(y)) { drawBlock(g, 'X', px, py, c, false); continue; }
         if (t === 'G') {
           drawBlock(g, 'G', px, py, c, false);
-          g.globalAlpha = 0.35 + 0.35 * Math.sin(now / 260 + x * 0.9 + y * 0.6);
+          g.globalAlpha = save.prefs.effects ? 0.35 + 0.35 * Math.sin(now / 260 + x * 0.9 + y * 0.6) : 0.5;
           drawBlock(g, 'G', px, py, c, true);
           g.globalAlpha = 1;
         } else {
@@ -2088,6 +2114,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     const g = holdCtx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+    setCanvasLabel(holdCanvas, 'Hold: ' + (game && game.holdType ? game.holdType + ' piece' : 'empty'));
     if (!game || !game.holdType) return;
     const m = Math.round(mini * dpr);
     drawMiniPiece(g, game.holdType, holdCanvas.width / 2, holdCanvas.height / 2, m, !game.canHold);
@@ -2100,6 +2127,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     if (!game) return;
     const m = Math.round(mini * dpr);
     const n = save.prefs.nextCount;
+    setCanvasLabel(nextCanvas, 'Next pieces: ' + game.queue.slice(0, n).join(', '));
     const slot = nextCanvas.height / n;
     game.queue.slice(0, n).forEach((type, i) => {
       const size = i === 0 ? m : Math.round(m * 0.85);
@@ -2182,7 +2210,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     function unlock() {
       unlocked = true;
       if (!save.prefs.sound && !save.prefs.music) return;
-      if (init() && ctx.state === 'suspended') ctx.resume().catch(() => {});
+      if (init() && ctx.state !== 'running') ctx.resume().catch(() => {});
     }
     function applyVolumes() {
       if (!ctx) return;
@@ -2274,7 +2302,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
       if (want === musicOn) return;
       if (want) {
         if (!init()) return;
-        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        if (ctx.state !== 'running') ctx.resume().catch(() => {});
         musicOn = true;
         nextTime = ctx.currentTime + 0.08;
         musicBus.gain.cancelScheduledValues(ctx.currentTime);
@@ -2303,6 +2331,11 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     void node.offsetWidth;   // restart the animation
     node.classList.add(cls);
   }
+  // Screen readers: short spoken updates (pause, level-up, results).
+  const liveEl = $('sr-live');
+  function announce(text) { liveEl.textContent = ''; setTimeout(() => { liveEl.textContent = text; }, 30); }
+  function setCanvasLabel(cv, text) { if (cv.getAttribute('aria-label') !== text) cv.setAttribute('aria-label', text); }
+
   // subs: optional smaller lines under the main text ("BACK-TO-BACK", "COMBO ×3").
   function popup(text, cls, subs) {
     popupEl.textContent = text;
@@ -2408,6 +2441,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
         if (save.prefs.effects) retrigger(boardWrap, 'levelup');
         slots.forEach((sl, i) => { if ((hudSpec()[i] || [])[2] === 'level') retrigger(sl.node, 'pulse'); });
         popup('LEVEL ' + e.level);
+        announce('Level ' + e.level);
       } else if (e.type === 'zenwipe') {
         popup('FRESH START');
       }
@@ -2496,7 +2530,12 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
   // ----- Zen practice setup ------------------------------------------------
-  function showZen() { screen = 'zen'; $('zenSetup').innerHTML = speedHTML(); showOverlay('zen'); }
+  function showZen() {
+    screen = 'zen';
+    $('p-speed').innerHTML = '';       // only one Zen speed slider on the page at a time
+    $('zenSetup').innerHTML = speedHTML();
+    showOverlay('zen');
+  }
 
   // ----- Settings ------------------------------------------------------------
   let listening = null;            // action waiting for a new key
@@ -2513,8 +2552,9 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   }
   function switchRow(pref, label) {
     const on = !!save.prefs[pref];
-    return '<div class="set-row"><div class="set-inline">' + label +
-      '<button class="switch" data-act="switch" data-pref="' + pref + '" aria-pressed="' + on + '">' + (on ? 'On' : 'Off') + '</button></div></div>';
+    return '<div class="set-row"><div class="set-inline"><span id="lbl-' + pref + '">' + label + '</span>' +
+      '<button class="switch" role="switch" data-act="switch" data-pref="' + pref + '" aria-checked="' + on + '" aria-labelledby="lbl-' + pref + '">' +
+      (on ? 'On' : 'Off') + '</button></div></div>';
   }
   const SETTING_FMT = {
     das: v => v + ' ms', arr: v => (v === 0 ? 'Instant' : v + ' ms'), startLevel: v => 'Level ' + v,
@@ -2522,7 +2562,8 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   };
   function renderSettings() {
     const keys = ACTIONS.map(([a, label]) =>
-      '<span>' + label + '</span><button class="keybtn' + (listening === a ? ' listening' : '') + '" data-act="bind" data-action="' + a + '">' +
+      '<span>' + label + '</span><button class="keybtn' + (listening === a ? ' listening' : '') + '" data-act="bind" data-action="' + a + '"' +
+      ' aria-label="' + esc(label + ': ' + (listening === a ? 'press the new key' : bindingText(a))) + '">' +
       (listening === a ? 'Press a key…' : esc(bindingText(a))) + '</button>').join('');
     $('settingsBody').innerHTML =
       '<div class="set-group"><h4>Handling</h4>' +
@@ -2668,9 +2709,15 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     game.paused = true;
     game.releaseAll();
     screen = 'paused';
+    // Stop music right here: when the tab is hidden the browser has already
+    // stopped animation frames, so the frame loop can't do it.
+    Sound.setMusic(false);
     setText($('p-mode'), modeTag(session));
+    setText($('p-hint'), bindingText('pause').replace(/ \/ /g, ' or ') + ' to resume');
+    $('zenSetup').innerHTML = '';     // only one Zen speed slider on the page at a time
     $('p-speed').innerHTML = session.mode === 'zen' ? speedHTML() : '';
     showOverlay('pause');
+    announce('Paused');
   }
   function resume() {
     if (!game) return;
@@ -2686,6 +2733,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     confirmFrom = screen === 'playing' ? 'playing' : 'paused';
     game.paused = true;
     game.releaseAll();
+    Sound.setMusic(false);
     screen = 'confirm';
     showOverlay('confirm');
   }
@@ -2699,6 +2747,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
     endStart = now;
     game.releaseAll();
     screen = 'ending';
+    Sound.setMusic(false);
     const o = game.outcome;
     if (o === 'win') {
       Sound.sfx('win');
@@ -2839,6 +2888,8 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
       '<button class="btn' + (primary ? ' primary' : '') + '" data-act="' + act + '"' + (primary ? ' data-primary' : '') + '>' + label + '</button>').join('');
     setText($('r-hint'), R.hint);
     showOverlay('result');
+    announce(R.title.charAt(0) + R.title.slice(1).toLowerCase() + (R.sub ? '. ' + R.sub : '') +
+      (R.stats[0] ? '. ' + R.stats[0][0] + ' ' + R.stats[0][1] : ''));
 
     if (R.confetti) {
       confetti(R.confetti);
@@ -2870,10 +2921,20 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
   function captureKey(e) {
     e.preventDefault();
     if (e.repeat) return;
+    if (!e.code) return;               // some mobile keyboards send no code
     if (e.code === 'Escape') { listening = null; renderSettings(); return; }
     if (RESERVED_KEYS.includes(e.code)) { Sound.sfx('lose'); return; }
-    for (const [a] of ACTIONS) save.prefs.keys[a] = save.prefs.keys[a].filter(c => c !== e.code);
-    save.prefs.keys[listening] = [e.code];
+    const action = listening;
+    const old = save.prefs.keys[action].filter(c => c !== e.code);
+    for (const [a] of ACTIONS) {
+      if (a === action) continue;
+      const had = save.prefs.keys[a].includes(e.code);
+      save.prefs.keys[a] = save.prefs.keys[a].filter(c => c !== e.code);
+      // Never leave another action with no key: it takes this action's old
+      // keys instead (a swap), so the game always stays playable.
+      if (had && !save.prefs.keys[a].length) save.prefs.keys[a] = old.slice();
+    }
+    save.prefs.keys[action] = [e.code];
     listening = null;
     persist(); buildKeyMap(); renderSettings(); Sound.sfx('click');
     const b = document.querySelector('[data-act="bind"]'); if (b) b.focus({ preventScroll: true });
@@ -2932,6 +2993,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
       if (e.repeat) return;
       const ov = document.querySelector('.overlay.show');
       const a = document.activeElement;
+      if (a && a.type === 'range') return;   // Enter on a slider shouldn't close the screen
       if (ov && a && a.tagName === 'BUTTON' && ov.contains(a)) a.click();
       else if (ov) { const p = ov.querySelector('[data-primary]'); if (p) p.click(); }
       return;
@@ -2955,6 +3017,9 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
 
     const act = GAME_KEYS[e.code];
     if (act === 'pause' || e.code === 'Escape') { e.preventDefault(); if (!e.repeat) pause(); return; }
+    // R asks to restart. Ctrl+R is deliberately caught too: Ctrl is a rotate key,
+    // so a stray Ctrl+R mid-game should ask, not reload and lose the game.
+    // (F5 and the browser's reload button still work.)
     if (e.code === 'KeyR') { e.preventDefault(); if (!e.repeat) askRestart(); return; }
     if (!act) return;
     e.preventDefault();
@@ -2996,6 +3061,7 @@ body.calm #popup.pop { animation: popfade 1.1s ease-out forwards; }
       case 'reset-settings': {
         const keep = { difficulty: save.prefs.difficulty };
         save.prefs = Object.assign({}, DEFAULT_PREFS, keep, { keys: cleanKeys(null) });
+        document.body.classList.toggle('calm', !save.prefs.effects);
         persist(); buildKeyMap(); Sound.applyVolumes(); layout(); listening = null; renderSettings();
         break;
       }

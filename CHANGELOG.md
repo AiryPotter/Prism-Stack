@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.0.1 — fixes from an independent code audit
+
+### Prism Stack
+- **Music no longer keeps playing in a background tab.** Switching tabs paused the game, but the music only stopped on the next screen redraw, which browsers skip for hidden tabs.
+- **Rebinding a key can't leave an action with no key.** Taking a key from another action now swaps the two actions' keys.
+- **Page zoom works again**, for anyone who needs larger text.
+- **Calm mode, and your system's "reduce motion" setting, now cover every animation.** That includes the winning-title shimmer, star pops, menu fades, the blinking key prompt and twinkling gems. Turning on "reduce motion" while the game is open now takes effect straight away.
+- **Better screen-reader support:**
+  - menus are announced as dialogs
+  - settings switches and key buttons say what they control
+  - the board, hold and next areas have names
+  - pausing, level-ups and results are announced
+- **The board is drawn crisply at 125% and 150% display scaling.** Before, a strip of the board could be left blank, or the bottom row clipped.
+- **Smaller fixes:**
+  - "Reset all" applies calm mode immediately.
+  - The pause hint shows your actual pause key.
+  - Enter on a settings slider no longer closes Settings.
+  - Duplicate slider IDs are gone.
+  - Audio resumes after an iOS interruption.
+
+### Stackfall
+- **A tap on the Next or stats cards no longer rotates the piece.** A second finger no longer hijacks a swipe already in progress.
+- **The system "reduce motion" setting is respected:** no shake, and messages fade instead of bouncing.
+- **Better screen-reader support:**
+  - menus are announced as dialogs, and the game behind them is disabled while they're open
+  - toggles report on/off
+  - sound preview buttons are named
+  - pausing and results are announced
+- **Smaller fixes:**
+  - The long-press block now covers only the game area, not the menus.
+  - Audio resumes after an iOS interruption.
+
+### Checks
+- 14 new regression checks in `tools/browser-check.js`, one or more for each fix above.
+
 ## v1.0 — first full release
 
 Two free, ad-free, offline falling-block puzzle games, each a single HTML file:

@@ -164,6 +164,10 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
 .speed output{color:var(--accent);font-weight:900;text-align:right}
 .speed input[type=range]{display:block;width:100%;height:40px;margin:6px 0 0;accent-color:var(--accent);touch-action:none;cursor:pointer}
 .speed .ends{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:700}
+@keyframes popfade{0%{opacity:0}15%{opacity:1}75%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#boardWrap.shake{animation:none}#pop.go{animation:popfade .95s ease-out forwards}}
+.sheet:focus{outline:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 </style>
 </head>
 <body>
@@ -177,11 +181,11 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
   </header>
 
   <div id="play">
-    <div id="boardWrap"><canvas id="board"></canvas><div id="pop"></div></div>
+    <div id="boardWrap"><canvas id="board" role="img" aria-label="Game board"></canvas><div id="pop" aria-hidden="true"></div></div>
     <div id="side">
       <div class="card"><div class="label">Next</div>
-        <canvas class="mini big" id="n0"></canvas><canvas class="mini" id="n1"></canvas><canvas class="mini" id="n2"></canvas></div>
-      <div class="card tap" id="holdCard"><div class="label">Hold</div><canvas class="mini" id="hc"></canvas></div>
+        <canvas class="mini big" id="n0" role="img" aria-label="Next piece"></canvas><canvas class="mini" id="n1" aria-hidden="true"></canvas><canvas class="mini" id="n2" aria-hidden="true"></canvas></div>
+      <div class="card tap" id="holdCard"><div class="label">Hold</div><canvas class="mini" id="hc" role="img" aria-label="Hold: empty"></canvas></div>
       <div class="card"><div class="label" id="sl0">Score</div><div class="stat" id="sv0">0</div></div>
       <div class="card"><div class="label" id="sl1">Lines</div><div class="stat" id="sv1">0</div></div>
       <div class="card"><div class="label" id="sl2">Level</div><div class="stat" id="sv2">1</div></div>
@@ -202,7 +206,8 @@ header{display:flex;align-items:center;justify-content:space-between;height:40px
   </div>
 </div>
 
-<div id="overlay"><div class="sheet" id="sheet"></div></div>
+<div id="overlay" role="dialog" aria-modal="true" aria-label="Menu"><div class="sheet" id="sheet" tabindex="-1"></div></div>
+<div id="sr-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 <input type="file" id="fileIn" accept="audio/*" hidden>
 
 <!-- =======================================================================
@@ -1232,7 +1237,9 @@ function tc(s){return String(s).toLowerCase().replace(/(^|[\s-])([a-z])/g,functi
 /* ---------- DOM ---------- */
 function $(id){return document.getElementById(id);}
 var cv=$('board'), ctx=cv.getContext('2d'), play=$('play'), side=$('side'), wrap=$('boardWrap');
-var overlay=$('overlay'), sheet=$('sheet'), popEl=$('pop'), badgeEl=$('badge');
+var overlay=$('overlay'), sheet=$('sheet'), popEl=$('pop'), badgeEl=$('badge'), appEl=$('app'), liveEl=$('sr-live');
+// Screen readers: short spoken updates (pause, results).
+function announce(t){liveEl.textContent='';setTimeout(function(){liveEl.textContent=t;},30);}
 var minis=[$('n0'),$('n1'),$('n2')], holdCv=$('hc');
 var slotL=[$('sl0'),$('sl1'),$('sl2')], slotV=[$('sv0'),$('sv1'),$('sv2')];
 
@@ -1525,6 +1532,8 @@ function drawSide(){
   sideKey=key; dirtyUI=false;
   for(var i=0;i<3;i++)drawMini(minis[i],q[i]||null,false);
   drawMini(holdCv,h,dim);
+  minis[0].setAttribute('aria-label','Next pieces: '+(q.slice(0,3).join(', ')||'none'));
+  holdCv.setAttribute('aria-label','Hold: '+(h?h+' piece':'empty'));
 }
 // Three stat cards that change with the mode: [label, value, warn]
 function hud(){
@@ -1595,7 +1604,7 @@ function initAudio(force){
       decodeAllCustom();
     }
   }
-  if(actx&&actx.state==='suspended'){try{actx.resume();}catch(e){}}
+  if(actx&&actx.state!=='running'){try{var rp=actx.resume();if(rp&&rp.catch)rp.catch(function(){});}catch(e){}}
 }
 function tone(f,d,type,v,when,slide){
   if(!actx||!settings.sound)return;
@@ -1860,7 +1869,7 @@ var CONF='<div class="confnote">OPEN SOURCE · NO ADS · NO TRACKING</div>';
 function toggles(){
   var L={ghost:'Ghost',haptics:'Vibrate',sound:'Sound'};
   return '<div class="toggles">'+['ghost','haptics','sound'].map(function(k){
-    return '<button class="tog'+(settings[k]?' on':'')+'" data-act="tog" data-k="'+k+'">'+L[k]+'</button>';}).join('')+'</div>';
+    return '<button class="tog'+(settings[k]?' on':'')+'" data-act="tog" data-k="'+k+'" aria-pressed="'+!!settings[k]+'">'+L[k]+'</button>';}).join('')+'</div>';
 }
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function rowsHTML(rows){return '<div class="rows">'+rows.map(function(r){return '<span>'+esc(r[0])+'</span><b>'+esc(r[1])+'</b>';}).join('')+'</div>';}
@@ -1874,7 +1883,7 @@ function soundsHTML(){
       return '<div class="srow'+(i===curI?' cur':'')+'"><span class="semo">'+m.emoji+'</span>'+
         '<span class="sname"><small>LEVEL '+(i+1)+(i===curI?' · NOW':'')+'</small>'+m.name+
         (mine?'<em>Your clip: '+esc(mine.name||'audio')+'</em>':'')+'</span>'+
-        '<button class="sbtn" data-act="preview" data-i="'+i+'" aria-label="Play">▶</button>'+
+        '<button class="sbtn" data-act="preview" data-i="'+i+'" aria-label="Play '+esc(m.name)+'">▶</button>'+
         (mine?'<button class="sbtn" data-act="reset" data-i="'+i+'">Reset</button>'
              :'<button class="sbtn" data-act="upload" data-i="'+i+'">Own</button>')+'</div>';
     }).join('')+'</div>'+
@@ -1886,7 +1895,7 @@ function menuHTML(){
   var d=save.prefs.difficulty, stars=totalStars();
   return '<div class="logo">STACK<span>FALL</span></div><div class="chips">'+TYPES.map(function(t){return '<i style="background:'+COLORS[t]+'"></i>';}).join('')+'</div>'+
     '<div class="mblock"><div class="mhead">Marathon<small>Best '+fmt(save.best['marathon-'+d]||0)+'</small></div>'+
-    '<div class="seg">'+['easy','normal','hard'].map(function(k){return '<button class="'+(k===d?'on':'')+'" data-act="diff" data-d="'+k+'">'+DIFFICULTY[k].label+'</button>';}).join('')+'</div>'+
+    '<div class="seg">'+['easy','normal','hard'].map(function(k){return '<button class="'+(k===d?'on':'')+'" data-act="diff" data-d="'+k+'" aria-pressed="'+(k===d)+'">'+DIFFICULTY[k].label+'</button>';}).join('')+'</div>'+
     '<div class="mdesc">'+esc(DIFFICULTY[d].desc)+'</div>'+
     '<button class="primary" data-act="play" data-m="marathon">Play Marathon</button></div>'+
     '<div class="mgrid">'+
@@ -1952,6 +1961,12 @@ function showOverlay(mode,data){
   else if(mode==='sounds')h=soundsHTML();
   else if(mode==='result'){if(data)lastResult=data;h=resultHTML(lastResult);}
   sheet.innerHTML=h; overlay.classList.add('show');
+  var DIALOG_NAMES={menu:'Main menu',stages:'Stages',intro:'Stage '+introStage,pause:'Paused',zen:'Zen practice',sounds:'Level sounds',result:(lastResult&&lastResult.title)||'Results'};
+  overlay.setAttribute('aria-label',DIALOG_NAMES[mode]||'Menu');
+  appEl.inert=true;
+  try{sheet.focus({preventScroll:true});}catch(_){}
+  if(mode==='result'&&lastResult)announce(lastResult.title+'. '+lastResult.sub+(lastResult.big?'. '+lastResult.big:''));
+  if(mode==='pause')announce('Paused');
   sheet.scrollTop=(mode==='sounds')?soundsScroll:0;
   if(mode==='stages'){var nx=sheet.querySelector('.tile.next');if(nx&&nx.scrollIntoView)nx.scrollIntoView({block:'nearest'});}
 }
@@ -1977,7 +1992,7 @@ fileIn.addEventListener('change',function(){
   rd.onerror=function(){refreshSounds("Couldn't open that file.");};
   rd.readAsArrayBuffer(f);
 });
-function hideOverlay(){overlay.classList.remove('show');}
+function hideOverlay(){overlay.classList.remove('show'); appEl.inert=false;}
 overlay.addEventListener('click',function(e){
   var b=e.target.closest?e.target.closest('[data-act]'):null; if(!b||b.disabled)return;
   var a=b.getAttribute('data-act'), bi=parseInt(b.getAttribute('data-i'),10);
@@ -1989,7 +2004,7 @@ overlay.addEventListener('click',function(e){
     case 'upload':pendingClip=bi;fileIn.value='';fileIn.click();return;
     case 'reset':delete customRaw[bi];delete customBuf[bi];dbDel(bi);refreshSounds('Level '+(bi+1)+' is back to '+MEMES[bi].name+'.');playMeme(bi,true);return;
     case 'tog':{var k=b.getAttribute('data-k');settings[k]=!settings[k];store.set('settings',settings);
-      b.classList.toggle('on',settings[k]); if(k==='sound'&&settings[k])initAudio(); if(k==='haptics'&&settings[k])buzz(12);return;}
+      b.classList.toggle('on',settings[k]); b.setAttribute('aria-pressed',String(settings[k])); if(k==='sound'&&settings[k])initAudio(); if(k==='haptics'&&settings[k])buzz(12);return;}
     case 'diff':save.prefs.difficulty=b.getAttribute('data-d');persist();showOverlay('menu');return;
     case 'play':playMode(b.getAttribute('data-m'));return;
     case 'zen-setup':showOverlay('zen');return;
@@ -2017,6 +2032,8 @@ var gs=null;
 play.addEventListener('pointerdown',function(e){
   if(state!=='playing')return;
   if(e.pointerType==='mouse'&&e.button!==0)return;
+  if(gs)return;                                              // second finger: ignore
+  if(e.target&&e.target.closest&&e.target.closest('#side'))return;   // Next / stats cards
   var now=performance.now();
   gs={id:e.pointerId,x0:e.clientX,y0:e.clientY,ax:e.clientX,ay:e.clientY,t0:now,axis:null,moved:false,held:false,samples:[[now,e.clientY]]};
   try{play.setPointerCapture(e.pointerId);}catch(_){}
@@ -2110,7 +2127,7 @@ window.addEventListener('keydown',function(e){
 window.addEventListener('keyup',function(e){if(e.key==='ArrowDown')setSoft(false);});
 
 /* ---------- system events ---------- */
-document.addEventListener('contextmenu',function(e){e.preventDefault();});
+appEl.addEventListener('contextmenu',function(e){e.preventDefault();});
 document.addEventListener('visibilitychange',function(){if(document.hidden)pause();});
 window.addEventListener('resize',requestLayout);
 window.addEventListener('orientationchange',requestLayout);
